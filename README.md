@@ -43,13 +43,6 @@
 
 ---
 
-## 📱 Screenshots
-
-| **Gallery Grid** | **Media Viewer** | **Neumorphic Settings** |
-|:---:|:---:|:---:|
-| *(Add Screenshot)* | *(Add Screenshot)* | *(Add Screenshot)* |
-
----
 
 ## 🔧 Setup & Build
 
