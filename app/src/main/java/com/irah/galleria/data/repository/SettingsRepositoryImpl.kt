@@ -1,0 +1,117 @@
+package com.irah.galleria.data.repository
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import com.irah.galleria.domain.model.AppSettings
+import com.irah.galleria.domain.model.GalleryViewType
+import com.irah.galleria.domain.model.ThemeMode
+import com.irah.galleria.domain.repository.SettingsRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+class SettingsRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context
+) : SettingsRepository {
+
+    private val dataStore = context.dataStore
+
+    private object Keys {
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val VIEW_TYPE = stringPreferencesKey("view_type")
+        val GALLERY_GRID_COUNT = intPreferencesKey("gallery_grid_count")
+        val ALBUM_GRID_COUNT = intPreferencesKey("album_grid_count")
+        val SHOW_MEDIA_COUNT = booleanPreferencesKey("show_media_count")
+        val ANIMATIONS_ENABLED = booleanPreferencesKey("animations_enabled")
+        val GALLERY_CORNER_RADIUS = intPreferencesKey("gallery_corner_radius")
+        val ALBUM_CORNER_RADIUS = intPreferencesKey("album_corner_radius")
+        val ACCENT_COLOR = androidx.datastore.preferences.core.longPreferencesKey("accent_color")
+        val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
+        val GRID_SPACING = intPreferencesKey("grid_spacing")
+        val MAX_BRIGHTNESS = booleanPreferencesKey("max_brightness")
+        val VIDEO_AUTOPLAY = booleanPreferencesKey("video_autoplay")
+    }
+
+    override val settings: Flow<AppSettings> = dataStore.data.map { preferences ->
+        AppSettings(
+            themeMode = try {
+                ThemeMode.valueOf(preferences[Keys.THEME_MODE] ?: ThemeMode.SYSTEM.name)
+            } catch (e: Exception) { ThemeMode.SYSTEM },
+            galleryViewType = try {
+                GalleryViewType.valueOf(preferences[Keys.VIEW_TYPE] ?: GalleryViewType.GRID.name)
+            } catch (e: Exception) { GalleryViewType.GRID },
+            galleryGridCount = preferences[Keys.GALLERY_GRID_COUNT] ?: 3,
+            albumGridCount = preferences[Keys.ALBUM_GRID_COUNT] ?: 2,
+            showMediaCount = preferences[Keys.SHOW_MEDIA_COUNT] ?: true,
+            animationsEnabled = preferences[Keys.ANIMATIONS_ENABLED] ?: true,
+            galleryCornerRadius = preferences[Keys.GALLERY_CORNER_RADIUS] ?: 12,
+            albumCornerRadius = preferences[Keys.ALBUM_CORNER_RADIUS] ?: 12,
+            accentColor = preferences[Keys.ACCENT_COLOR] ?: 0xFF6650a4L,
+            useDynamicColor = preferences[Keys.USE_DYNAMIC_COLOR] ?: true,
+            gridSpacing = preferences[Keys.GRID_SPACING] ?: 4,
+            maxBrightness = preferences[Keys.MAX_BRIGHTNESS] ?: false,
+            videoAutoplay = preferences[Keys.VIDEO_AUTOPLAY] ?: false
+        )
+    }
+
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        dataStore.edit { it[Keys.THEME_MODE] = mode.name }
+    }
+
+    override suspend fun setGalleryViewType(type: GalleryViewType) {
+        dataStore.edit { it[Keys.VIEW_TYPE] = type.name }
+    }
+
+    override suspend fun setGalleryGridCount(count: Int) {
+        dataStore.edit { it[Keys.GALLERY_GRID_COUNT] = count }
+    }
+
+    override suspend fun setAlbumGridCount(count: Int) {
+        dataStore.edit { it[Keys.ALBUM_GRID_COUNT] = count }
+    }
+
+    override suspend fun setShowMediaCount(show: Boolean) {
+        dataStore.edit { it[Keys.SHOW_MEDIA_COUNT] = show }
+    }
+
+    override suspend fun setAnimationsEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.ANIMATIONS_ENABLED] = enabled }
+    }
+
+    override suspend fun setGalleryCornerRadius(radius: Int) {
+        dataStore.edit { it[Keys.GALLERY_CORNER_RADIUS] = radius }
+    }
+
+    override suspend fun setAlbumCornerRadius(radius: Int) {
+        dataStore.edit { it[Keys.ALBUM_CORNER_RADIUS] = radius }
+    }
+
+    override suspend fun setAccentColor(colorValue: Long) {
+        dataStore.edit { it[Keys.ACCENT_COLOR] = colorValue }
+    }
+
+    override suspend fun setUseDynamicColor(useDynamic: Boolean) {
+        dataStore.edit { it[Keys.USE_DYNAMIC_COLOR] = useDynamic }
+    }
+
+    override suspend fun setGridSpacing(spacing: Int) {
+        dataStore.edit { it[Keys.GRID_SPACING] = spacing }
+    }
+
+    override suspend fun setMaxBrightness(enabled: Boolean) {
+        dataStore.edit { it[Keys.MAX_BRIGHTNESS] = enabled }
+    }
+
+    override suspend fun setVideoAutoplay(enabled: Boolean) {
+        dataStore.edit { it[Keys.VIDEO_AUTOPLAY] = enabled }
+    }
+}

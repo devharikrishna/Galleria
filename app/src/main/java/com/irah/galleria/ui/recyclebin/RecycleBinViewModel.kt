@@ -1,0 +1,97 @@
+package com.irah.galleria.ui.recyclebin
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.irah.galleria.domain.model.Media
+import com.irah.galleria.domain.repository.MediaRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class RecycleBinState(
+    val media: List<Media> = emptyList(),
+    val isLoading: Boolean = false,
+    val selectedMediaIds: Set<Long> = emptySet(),
+    val isSelectionMode: Boolean = false
+)
+
+sealed class RecycleBinEvent {
+    data class ToggleSelection(val mediaId: Long): RecycleBinEvent()
+    object ClearSelection: RecycleBinEvent()
+    object RestoreSelected: RecycleBinEvent()
+    object DeleteSelectedForever: RecycleBinEvent()
+}
+
+@HiltViewModel
+class RecycleBinViewModel @Inject constructor(
+    private val repository: MediaRepository
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(RecycleBinState())
+    val state: StateFlow<RecycleBinState> = _state.asStateFlow()
+
+    init {
+        loadTrashedMedia()
+    }
+
+    private fun loadTrashedMedia() {
+        viewModelScope.launch {
+            repository.getTrashedMedia().collect { mediaList ->
+                _state.value = _state.value.copy(media = mediaList)
+            }
+        }
+    }
+
+    fun onEvent(event: RecycleBinEvent) {
+        when(event) {
+            is RecycleBinEvent.ToggleSelection -> {
+                val current = _state.value.selectedMediaIds.toMutableSet()
+                if (current.contains(event.mediaId)) current.remove(event.mediaId)
+                else current.add(event.mediaId)
+                _state.value = _state.value.copy(
+                    selectedMediaIds = current,
+                    isSelectionMode = current.isNotEmpty()
+                )
+            }
+            RecycleBinEvent.ClearSelection -> {
+                _state.value = _state.value.copy(
+                    selectedMediaIds = emptySet(),
+                    isSelectionMode = false
+                )
+            }
+            RecycleBinEvent.RestoreSelected -> {
+                // Handled by UI invocation since it needs intent sender
+            }
+            RecycleBinEvent.DeleteSelectedForever -> {
+                // Handled by UI invocation since it needs intent sender
+            }
+        }
+    }
+    
+    fun restoreSelected(onIntentSender: (android.content.IntentSender) -> Unit) {
+        viewModelScope.launch {
+            val selected = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
+            val intentSender = repository.restoreMedia(selected)
+            if (intentSender != null) {
+                onIntentSender(intentSender)
+            } else {
+                onEvent(RecycleBinEvent.ClearSelection)
+            }
+        }
+    }
+
+    fun deleteForever(onIntentSender: (android.content.IntentSender) -> Unit) {
+        viewModelScope.launch {
+            val selected = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
+            val intentSender = repository.deleteForever(selected) 
+            if (intentSender != null) {
+                onIntentSender(intentSender)
+            } else {
+                onEvent(RecycleBinEvent.ClearSelection)
+            }
+        }
+    }
+}
