@@ -11,7 +11,7 @@
 ## ✨ Key Features
 
 ### 🎨 Visual Excellence
-*   **Neumorphic UI**: "Soft UI" settings screen with tactile, extruded cards and lighting effects.
+*   **Material and Glassy UI**: Standard and modern UI with Material3 and Glassy user interface.
 *   **Immersive Viewer**: Edge-to-edge media viewing with gesture-based zoom, pan, and dismiss.
 *   **Dynamic Theming**: Supports Material You (Dynamic Color) and custom accent palettes.
 *   **Staggered Masonry Grid**: Beautifully displays images of varying aspect ratios.
