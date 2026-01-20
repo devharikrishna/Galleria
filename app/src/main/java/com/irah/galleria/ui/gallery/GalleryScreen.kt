@@ -26,7 +26,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -51,7 +50,6 @@ import androidx.navigation.NavController
 import com.irah.galleria.domain.usecase.FilterType
 import com.irah.galleria.domain.util.MediaOrder
 import com.irah.galleria.domain.util.OrderType
-import com.irah.galleria.ui.album.AlbumDetailEvent
 import com.irah.galleria.ui.gallery.components.MediaGridItem
 import com.irah.galleria.ui.navigation.Screen
 @OptIn(ExperimentalMaterial3Api::class)

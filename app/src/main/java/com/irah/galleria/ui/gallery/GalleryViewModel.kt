@@ -15,8 +15,6 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.core.net.toUri
-import com.irah.galleria.domain.repository.SettingsRepository
-import kotlinx.coroutines.flow.first
 data class GalleryState(
     val media: List<Media> = emptyList(),
     val albums: List<com.irah.galleria.domain.model.Album> = emptyList(),
