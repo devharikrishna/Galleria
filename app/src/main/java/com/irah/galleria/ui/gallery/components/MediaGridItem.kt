@@ -10,29 +10,24 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayCircleFilled
-import androidx.compose.ui.graphics.painter.Painter
-import coil.compose.AsyncImagePainter
-import com.irah.galleria.domain.model.Media
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import com.irah.galleria.domain.model.Media
 import com.irah.galleria.ui.common.shimmer
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -44,8 +39,7 @@ fun MediaGridItem(
     cornerRadius: Int = 12,
     animationsEnabled: Boolean = true,
     isSelected: Boolean = false,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit = {}
+    onClick: () -> Unit
 ) {
     val containerModifier = if (!isStaggered) {
         modifier.aspectRatio(1f)
@@ -60,18 +54,14 @@ fun MediaGridItem(
     Box(
         modifier = containerModifier
             .padding(2.dp)
-            .shadow(2.dp, RoundedCornerShape(cornerRadius.dp)) // Add subtle shadow
             .clip(RoundedCornerShape(cornerRadius.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+            .clickable(onClick = onClick)
     ) {
         val painter = rememberAsyncImagePainter(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(media.uri)
-                .size(300) // Optimize for grid
+                .size(300)
                 .crossfade(animationsEnabled)
                 .build()
         )
@@ -104,7 +94,7 @@ fun MediaGridItem(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }

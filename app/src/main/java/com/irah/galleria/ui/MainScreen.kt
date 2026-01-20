@@ -1,14 +1,11 @@
 package com.irah.galleria.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.PhotoAlbum
@@ -80,7 +77,7 @@ fun MainScreen() {
         BottomNavItem.Album,
         BottomNavItem.Settings
     )
-
+    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     CompositionLocalProvider(LocalBottomBarVisibility provides bottomBarVisibility) {
         Scaffold(
             bottomBar = {
@@ -95,37 +92,72 @@ fun MainScreen() {
                     enter = slideInVertically { it } + expandVertically(),
                     exit = slideOutVertically { it } + shrinkVertically()
                 ) {
-                    NavigationBar {
-                        items.forEach { screen ->
-                            val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                            NavigationBarItem(
-                                icon = { 
-                                    Icon(
-                                        imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon, 
-                                        contentDescription = screen.title
-                                    ) 
-                                },
-                                label = { Text(screen.title) },
-                                selected = selected,
-                                onClick = {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                    val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
+                    if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
+                        com.irah.galleria.ui.theme.GlassNavigationBar {
+                             items.forEach { screen ->
+                                val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                                NavigationBarItem(
+                                    icon = { 
+                                        Icon(
+                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon, 
+                                            contentDescription = screen.title
+                                        ) 
+                                    },
+                                    label = { Text(screen.title) },
+                                    selected = selected,
+                                    colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                                        indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                        unselectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        unselectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                                        selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    onClick = {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
-                                }
-                            )
+                                )
+                            }
+                        }
+                    } else {
+                        NavigationBar {
+                            items.forEach { screen ->
+                                val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                                NavigationBarItem(
+                                    icon = { 
+                                        Icon(
+                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon, 
+                                            contentDescription = screen.title
+                                        ) 
+                                    },
+                                    label = { Text(screen.title) },
+                                    selected = selected,
+                                    onClick = {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
-        ) { innerPadding ->
+        ) { _ ->
             NavHost(
                 navController = navController,
                 startDestination = Screen.Gallery.route,
-                modifier = Modifier // Removed padding(innerPadding) for Edge-to-Edge, allow screens to handle it
+                modifier = Modifier
             ) {
                 composable(Screen.Gallery.route) {
                     GalleryScreen(navController = navController)

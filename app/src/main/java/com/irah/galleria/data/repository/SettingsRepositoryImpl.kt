@@ -36,9 +36,13 @@ class SettingsRepositoryImpl @Inject constructor(
         val ALBUM_CORNER_RADIUS = intPreferencesKey("album_corner_radius")
         val ACCENT_COLOR = androidx.datastore.preferences.core.longPreferencesKey("accent_color")
         val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")
-        val GRID_SPACING = intPreferencesKey("grid_spacing")
+        val ALBUM_DETAIL_VIEW_TYPE = stringPreferencesKey("album_detail_view_type")
+        val ALBUM_DETAIL_GRID_COUNT = intPreferencesKey("album_detail_grid_count")
+        val ALBUM_DETAIL_CORNER_RADIUS = intPreferencesKey("album_detail_corner_radius")
         val MAX_BRIGHTNESS = booleanPreferencesKey("max_brightness")
         val VIDEO_AUTOPLAY = booleanPreferencesKey("video_autoplay")
+        val UI_MODE = stringPreferencesKey("ui_mode")
+        val TRASH_ENABLED = booleanPreferencesKey("trash_enabled")
     }
 
     override val settings: Flow<AppSettings> = dataStore.data.map { preferences ->
@@ -46,6 +50,9 @@ class SettingsRepositoryImpl @Inject constructor(
             themeMode = try {
                 ThemeMode.valueOf(preferences[Keys.THEME_MODE] ?: ThemeMode.SYSTEM.name)
             } catch (e: Exception) { ThemeMode.SYSTEM },
+            uiMode = try {
+                com.irah.galleria.domain.model.UiMode.valueOf(preferences[Keys.UI_MODE] ?: com.irah.galleria.domain.model.UiMode.MATERIAL.name)
+            } catch (e: Exception) { com.irah.galleria.domain.model.UiMode.MATERIAL },
             galleryViewType = try {
                 GalleryViewType.valueOf(preferences[Keys.VIEW_TYPE] ?: GalleryViewType.GRID.name)
             } catch (e: Exception) { GalleryViewType.GRID },
@@ -57,9 +64,14 @@ class SettingsRepositoryImpl @Inject constructor(
             albumCornerRadius = preferences[Keys.ALBUM_CORNER_RADIUS] ?: 12,
             accentColor = preferences[Keys.ACCENT_COLOR] ?: 0xFF6650a4L,
             useDynamicColor = preferences[Keys.USE_DYNAMIC_COLOR] ?: true,
-            gridSpacing = preferences[Keys.GRID_SPACING] ?: 4,
+            albumDetailViewType = try {
+                GalleryViewType.valueOf(preferences[Keys.ALBUM_DETAIL_VIEW_TYPE] ?: GalleryViewType.GRID.name)
+            } catch (e: Exception) { GalleryViewType.GRID },
+            albumDetailGridCount = preferences[Keys.ALBUM_DETAIL_GRID_COUNT] ?: 3,
+            albumDetailCornerRadius = preferences[Keys.ALBUM_DETAIL_CORNER_RADIUS] ?: 12,
             maxBrightness = preferences[Keys.MAX_BRIGHTNESS] ?: false,
-            videoAutoplay = preferences[Keys.VIDEO_AUTOPLAY] ?: false
+            videoAutoplay = preferences[Keys.VIDEO_AUTOPLAY] ?: false,
+            trashEnabled = preferences[Keys.TRASH_ENABLED] ?: true
         )
     }
 
@@ -103,8 +115,16 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.edit { it[Keys.USE_DYNAMIC_COLOR] = useDynamic }
     }
 
-    override suspend fun setGridSpacing(spacing: Int) {
-        dataStore.edit { it[Keys.GRID_SPACING] = spacing }
+    override suspend fun setAlbumDetailViewType(type: GalleryViewType) {
+        dataStore.edit { it[Keys.ALBUM_DETAIL_VIEW_TYPE] = type.name }
+    }
+    
+    override suspend fun setAlbumDetailGridCount(count: Int) {
+        dataStore.edit { it[Keys.ALBUM_DETAIL_GRID_COUNT] = count }
+    }
+
+    override suspend fun setAlbumDetailCornerRadius(radius: Int) {
+        dataStore.edit { it[Keys.ALBUM_DETAIL_CORNER_RADIUS] = radius }
     }
 
     override suspend fun setMaxBrightness(enabled: Boolean) {
@@ -113,5 +133,13 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun setVideoAutoplay(enabled: Boolean) {
         dataStore.edit { it[Keys.VIDEO_AUTOPLAY] = enabled }
+    }
+
+    override suspend fun setUiMode(mode: com.irah.galleria.domain.model.UiMode) {
+        dataStore.edit { it[Keys.UI_MODE] = mode.name }
+    }
+
+    override suspend fun setTrashEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.TRASH_ENABLED] = enabled }
     }
 }

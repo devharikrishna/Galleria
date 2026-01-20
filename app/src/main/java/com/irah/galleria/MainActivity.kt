@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
 
             GalleriaTheme(
                 themeMode = settings.themeMode,
+                uiMode = settings.uiMode,
                 useDynamicColor = settings.useDynamicColor,
                 accentColor = settings.accentColor
             ) {

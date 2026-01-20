@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.irah.galleria.domain.repository.SettingsRepository
+import kotlinx.coroutines.flow.first
 
 data class AlbumDetailState(
     val media: List<Media> = emptyList(),
@@ -21,9 +23,11 @@ data class AlbumDetailState(
     val selectedMediaIds: Set<Long> = emptySet()
 )
 
+
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
     private val repository: MediaRepository,
+    private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -68,13 +72,20 @@ class AlbumDetailViewModel @Inject constructor(
                     isSelectionMode = false
                 )
             }
+            is AlbumDetailEvent.UpdateSelection -> {
+                _state.value = _state.value.copy(
+                    selectedMediaIds = event.selectedIds,
+                    isSelectionMode = event.selectedIds.isNotEmpty()
+                )
+            }
         }
     }
     
     fun deleteSelectedMedia(intentSenderLauncher: (android.content.IntentSender) -> Unit) {
         viewModelScope.launch {
             val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
-            val intentSender = repository.deleteMedia(selectedMedia)
+            val intentSender = deleteMediaUseCase(selectedMedia)
+
             if (intentSender != null) {
                 intentSenderLauncher(intentSender)
             } else {
@@ -92,6 +103,14 @@ class AlbumDetailViewModel @Inject constructor(
              } else {
                  onEvent(AlbumDetailEvent.ClearSelection)
              }
+        }
+    }
+
+    fun copySelectedMedia(targetPath: String) {
+        viewModelScope.launch {
+            val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
+            repository.copyMedia(selectedMedia, targetPath)
+            onEvent(AlbumDetailEvent.ClearSelection)
         }
     }
 
@@ -125,5 +144,6 @@ class AlbumDetailViewModel @Inject constructor(
 
 sealed class AlbumDetailEvent {
     data class ToggleSelection(val mediaId: Long) : AlbumDetailEvent()
+    data class UpdateSelection(val selectedIds: Set<Long>) : AlbumDetailEvent()
     object ClearSelection : AlbumDetailEvent()
 }

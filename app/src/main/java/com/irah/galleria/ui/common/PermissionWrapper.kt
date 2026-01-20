@@ -14,11 +14,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.irah.galleria.ui.theme.GlassScaffold
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -52,35 +54,39 @@ fun PermissionWrapper(
         }
     }
 
-    // Check if we have either full access OR partial access (Android 14+)
     val hasAccess = permissionState.allPermissionsGranted || 
             (Build.VERSION.SDK_INT >= 34 && permissionState.permissions.any { it.permission == android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED && it.status.isGranted })
 
     if (hasAccess) {
         content()
     } else {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(16.dp)
+
+        GlassScaffold(
+            modifier = Modifier){
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Permission Required",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "This app needs access to your photos and videos to function. Please grant the required permissions.",
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { permissionState.launchMultiplePermissionRequest() }) {
-                    Text("Grant Permissions")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Permission Required",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This app needs access to your photos and videos to function. Please grant the required permissions.",
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { permissionState.launchMultiplePermissionRequest() }) {
+                        Text("Grant Permissions")
+                    }
                 }
             }
         }
+
     }
 }

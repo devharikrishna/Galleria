@@ -1,6 +1,8 @@
 package com.irah.galleria.ui.settings
 
-import android.graphics.BlurMaskFilter
+import android.content.Intent
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,12 +25,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BrightnessHigh
+import androidx.compose.material.icons.outlined.CodeOff
 import androidx.compose.material.icons.outlined.ColorLens
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.GridOn
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.LightMode
@@ -37,7 +43,6 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.RoundedCorner
-import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -45,7 +50,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -53,23 +57,33 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat.getString
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.irah.galleria.R
 import com.irah.galleria.domain.model.GalleryViewType
 import com.irah.galleria.domain.model.ThemeMode
+import com.irah.galleria.domain.model.UiMode
 import com.irah.galleria.ui.LocalBottomBarVisibility
+import com.irah.galleria.ui.navigation.Screen
+import com.irah.galleria.ui.theme.GlassScaffold
+import com.irah.galleria.ui.theme.GlassSurface
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,9 +95,9 @@ fun SettingsScreen(
     val settings by viewModel.settings.collectAsState()
 
     val bottomBarVisibility = LocalBottomBarVisibility.current
-    val nestedScrollConnection = androidx.compose.runtime.remember {
-        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
-            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (available.y < -5) {
                     bottomBarVisibility.value = false
                 } else if (available.y > 5) {
@@ -94,11 +108,18 @@ fun SettingsScreen(
         }
     }
 
-    Scaffold(
+
+    GlassScaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
+            val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
             TopAppBar(
-                title = { Text("Settings") }
+                title = { Text("Settings") },
+                colors = if (uiMode == UiMode.LIQUID_GLASS) {
+                    androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                } else {
+                    androidx.compose.material3.TopAppBarDefaults.topAppBarColors()
+                }
             )
         }
     ) { innerPadding ->
@@ -110,6 +131,101 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
+
+
+            // --- Developed By ---
+            item {
+                SettingsGroup(title = "Developed By", icon = Icons.Outlined.CodeOff) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // Profile Image
+                            Image(
+                                painter = painterResource(id = R.drawable.developer_image),
+                                contentDescription = "Developer",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            Column {
+                                Text(
+                                    text = getString(context, R.string.developer_name),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Senior AI and Android Developer",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Social Icons Row
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+
+                            // LinkedIn
+                            SocialIcon(
+                                icon = ImageVector.vectorResource(id = R.drawable.ic_linkedin),
+                                onClick = {
+                                    // Assuming specific linkedIn URL or a search
+                                    val intent = Intent(Intent.ACTION_VIEW, getString(context, R.string.linkedin_url).toUri())
+                                    context.startActivity(intent)
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(24.dp))
+
+                            // GitHub
+                            SocialIcon(
+                                icon = ImageVector.vectorResource(id = R.drawable.ic_github),
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, getString(context, R.string.github_url).toUri())
+                                    context.startActivity(intent)
+                                }
+                            )
+
+
+                            Spacer(modifier = Modifier.width(24.dp))
+                            // Email
+                            SocialIcon(
+                                icon = Icons.Outlined.Email,
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                        data = "mailto:${getString(context, R.string.developer_email)}".toUri()
+                                    }
+                                    try { context.startActivity(intent) } catch (e: Exception) {
+                                        Log.e("SettingsScreen", "Error launching email intent", e)
+                                    }
+                                }
+                            )
+
+
+                        }
+                    }
+                }
+            }
+
             // --- Appearance ---
             item {
                 SettingsGroup(title = "Appearance", icon = Icons.Outlined.Palette) {
@@ -145,8 +261,34 @@ fun SettingsScreen(
                             onClick = { viewModel.setThemeMode(ThemeMode.DARK) }
                         )
                     }
+                    // Theme Mode
+                    Text(
+                        "UI Mode",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    val currentUiMode = settings.uiMode
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeChip(
+                            selected = currentUiMode == UiMode.MATERIAL,
+                            label = "Material",
+                            icon = Icons.Outlined.Android,
+                            onClick = { viewModel.setUiMode(UiMode.MATERIAL) }
+                        )
+                        ThemeChip(
+                            selected = currentUiMode == UiMode.LIQUID_GLASS,
+                            label = "Glassy",
+                            icon = Icons.Outlined.AutoAwesome,
+                            onClick = { viewModel.setUiMode(UiMode.LIQUID_GLASS) }
+                        )
+                    }
 
-                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
 
                     // Dynamic Color
                     SettingsSwitch(
@@ -179,8 +321,6 @@ fun SettingsScreen(
                         }
                     )
 
-                    HorizontalDivider()
-
                     SettingsSlider(
                         title = "Items per Row",
                         value = settings.galleryGridCount.toFloat(),
@@ -198,21 +338,12 @@ fun SettingsScreen(
                         icon = Icons.Outlined.RoundedCorner,
                         onValueChange = { viewModel.setGalleryCornerRadius(it.roundToInt()) }
                     )
-
-                    SettingsSlider(
-                        title = "Grid Spacing",
-                        value = settings.gridSpacing.toFloat(),
-                        range = 2f..16f,
-                        steps = 6,
-                        icon = Icons.Outlined.SpaceDashboard,
-                        onValueChange = { viewModel.setGridSpacing(it.roundToInt()) }
-                    )
                 }
             }
 
-            // --- Albums ---
+            // --- Albums List ---
             item {
-                SettingsGroup(title = "Albums", icon = Icons.Outlined.PhotoAlbum) {
+                SettingsGroup(title = "Albums List", icon = Icons.Outlined.PhotoAlbum) {
                     SettingsSlider(
                         title = "Items per Row",
                         value = settings.albumGridCount.toFloat(),
@@ -241,6 +372,39 @@ fun SettingsScreen(
                 }
             }
 
+            // --- Album Content ---
+            item {
+                 SettingsGroup(title = "Album Content", icon = Icons.Outlined.DashboardCustomize) {
+                    SettingsSwitch(
+                        title = "Staggered Layout",
+                        subtitle = "Use masonry style grid inside albums",
+                        icon = Icons.Outlined.DashboardCustomize,
+                        checked = settings.albumDetailViewType == GalleryViewType.STAGGERED,
+                        onCheckedChange = {
+                            viewModel.setAlbumDetailViewType(if (it) GalleryViewType.STAGGERED else GalleryViewType.GRID)
+                        }
+                    )
+
+                    SettingsSlider(
+                        title = "Items per Row",
+                        value = settings.albumDetailGridCount.toFloat(),
+                        range = 2f..5f,
+                        steps = 2,
+                        icon = Icons.Outlined.GridOn,
+                        onValueChange = { viewModel.setAlbumDetailGridCount(it.roundToInt()) }
+                    )
+
+                    SettingsSlider(
+                        title = "Corner Radius",
+                        value = settings.albumDetailCornerRadius.toFloat(),
+                        range = 0f..32f,
+                        steps = 0,
+                        icon = Icons.Outlined.RoundedCorner,
+                        onValueChange = { viewModel.setAlbumDetailCornerRadius(it.roundToInt()) }
+                    )
+                 }
+            }
+
             // --- Media & Playback ---
             item {
                 SettingsGroup(title = "Playback & Media", icon = Icons.Outlined.PlayCircle) {
@@ -258,14 +422,23 @@ fun SettingsScreen(
             // --- Data & About ---
             item {
                 SettingsGroup(title = "Data Management", icon = Icons.Outlined.Storage) {
+                    SettingsSwitch(
+                        title = "Enable Recycle Bin",
+                        subtitle = "Move items to bin before permanent deletion",
+                        icon = Icons.Default.Restore, // Using Restore icon to signify safety
+                        checked = settings.trashEnabled,
+                        onCheckedChange = { viewModel.setTrashEnabled(it) }
+                    )
+
                     SettingsItem(
-                        title = "Recycle Bin",
+                        title = "Open Recycle Bin",
                         subtitle = "Manage deleted items",
                         icon = Icons.Outlined.Delete,
-                        onClick = { navController.navigate(com.irah.galleria.ui.navigation.Screen.RecycleBin.route) }
+                        onClick = { navController.navigate(Screen.RecycleBin.route) }
                     )
                 }
             }
+
         }
     }
 }
@@ -300,77 +473,23 @@ fun SettingsGroup(
                 fontWeight = FontWeight.Bold
             )
         }
-        
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .neumorphic(
-                    color = MaterialTheme.colorScheme.surface,
-                    cornerRadius = 24.dp,
-                )
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
-                .padding(vertical = 12.dp) // Internal padding
+
+
+
+        GlassSurface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp, 
+            border = false // Or true if desired
         ) {
-            Column {
+            Column(modifier = Modifier.padding(vertical = 12.dp)) {
                 content()
             }
         }
     }
 }
 
-fun Modifier.neumorphic(
-    color: Color,
-    cornerRadius: androidx.compose.ui.unit.Dp = 24.dp,
-    elevation: androidx.compose.ui.unit.Dp = 6.dp,
-): Modifier = this.drawBehind {
-    val shadowColorDark = if (color.luminance() > 0.5f) {
-        Color.Black.copy(alpha = 0.2f)
-    } else {
-        Color.Black.copy(alpha = 0.9f)
-    }
-    val shadowColorLight = if (color.luminance() > 0.5f) {
-        Color.White.copy(alpha = 0.9f)
-    } else {
-        Color.White.copy(alpha = 0.1f)
-    }
-
-    val offset = elevation.toPx()
-    val radius = cornerRadius.toPx()
-
-    drawIntoCanvas { canvas ->
-        val paint = androidx.compose.ui.graphics.Paint()
-        val frameworkPaint = paint.asFrameworkPaint()
-        frameworkPaint.color = color.toArgb()
-        frameworkPaint.maskFilter = BlurMaskFilter(
-            offset,
-            BlurMaskFilter.Blur.NORMAL
-        )
-
-        // Dark Shadow (Bottom Right)
-        frameworkPaint.color = shadowColorDark.toArgb()
-        canvas.drawRoundRect(
-            left = offset,
-            top = offset,
-            right = size.width + offset / 2,
-            bottom = size.height + offset / 2,
-            radiusX = radius,
-            radiusY = radius,
-            paint = paint
-        )
-
-        // Light Shadow (Top Left)
-        frameworkPaint.color = shadowColorLight.toArgb()
-        canvas.drawRoundRect(
-            left = -offset,
-            top = -offset,
-            right = size.width - offset / 2,
-            bottom = size.height - offset / 2,
-            radiusX = radius,
-            radiusY = radius,
-            paint = paint
-        )
-    }
-}
 
 @Composable
 fun SettingsSwitch(

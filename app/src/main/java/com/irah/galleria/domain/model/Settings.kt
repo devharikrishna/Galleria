@@ -10,9 +10,14 @@ enum class GalleryViewType {
     GRID, STAGGERED
 }
 
+enum class UiMode {
+    MATERIAL, LIQUID_GLASS
+}
+
 @Immutable
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val uiMode: UiMode = UiMode.MATERIAL,
     val galleryViewType: GalleryViewType = GalleryViewType.GRID,
     val galleryGridCount: Int = 2, // Bigger items by default
     val albumGridCount: Int = 2,
@@ -22,7 +27,10 @@ data class AppSettings(
     val albumCornerRadius: Int = 12,
     val accentColor: Long = 0xFF6650a4L, // Default Purple40/80 equivalent
     val useDynamicColor: Boolean = true,
-    val gridSpacing: Int = 8, // More spacing
+    val albumDetailViewType: GalleryViewType = GalleryViewType.GRID,
+    val albumDetailGridCount: Int = 3,
+    val albumDetailCornerRadius: Int = 12,
     val maxBrightness: Boolean = false,
-    val videoAutoplay: Boolean = false
+    val videoAutoplay: Boolean = false,
+    val trashEnabled: Boolean = true
 )

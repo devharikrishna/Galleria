@@ -38,6 +38,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun GalleriaTheme(
     themeMode: com.irah.galleria.domain.model.ThemeMode = com.irah.galleria.domain.model.ThemeMode.SYSTEM,
+    uiMode: com.irah.galleria.domain.model.UiMode = com.irah.galleria.domain.model.UiMode.MATERIAL,
     useDynamicColor: Boolean = true,
     accentColor: Long = 0xFF6650a4,
     content: @Composable () -> Unit
@@ -89,9 +90,16 @@ fun GalleriaTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalUiMode provides uiMode,
+        LocalIsDarkTheme provides darkTheme
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
+
+val LocalIsDarkTheme = androidx.compose.runtime.staticCompositionLocalOf { false }

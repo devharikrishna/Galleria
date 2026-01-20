@@ -18,7 +18,8 @@ fun AlbumSelectionSheet(
     albums: List<Album>,
     onAlbumSelected: (Album) -> Unit,
     onCreateNewAlbum: () -> Unit,
-    onDismissRequest: () -> Unit
+    onDismissRequest: () -> Unit,
+    isCopyOperation: Boolean
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismissRequest
@@ -29,7 +30,7 @@ fun AlbumSelectionSheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                "Move to Album",
+                if (isCopyOperation) "Copy to Album" else "Move to Album",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(16.dp)
             )

@@ -92,6 +92,7 @@ class MediaRepositoryImpl @Inject constructor(
     }.flowOn(Dispatchers.IO)
 
     override suspend fun deleteMedia(mediaList: List<Media>): android.content.IntentSender? {
+        if (mediaList.isEmpty()) return null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val uris = mediaList.map { Uri.parse(it.uri) }
             val pi = MediaStore.createTrashRequest(contentResolver, uris, true) // Trash it
@@ -109,10 +110,8 @@ class MediaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun moveMedia(mediaList: List<Media>, targetPath: String): android.content.IntentSender? {
-        // Fallback strategy: Copy to new location -> Delete original
-        // This is necessary because updating RELATIVE_PATH is often restricted or flaky across different Android versions/vendors.
-        
         val failedMoves = mutableListOf<Media>()
+        val neededPermissions = mutableListOf<Uri>()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             for (media in mediaList) {
@@ -133,23 +132,27 @@ class MediaRepositoryImpl @Inject constructor(
                         }
                          contentResolver.update(Uri.parse(media.uri), finalValues, null, null)
                     } else {
-                        throw SecurityException("Update failed for ${media.uri}")
+                        throw java.io.IOException("Update failed for ${media.uri}")
                     }
                 } catch (e: Exception) {
-                    // Method 2: Copy + Delete (Robust)
-                    // If direct update fails (even with RecSecEx), fallback to Copy+Delete immediately.
-                    // This allows us to process the whole batch and request Delete permission for all originals at once (Android 11+).
+                    // Check for R+ SecurityException (Permission needed)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && e is SecurityException) {
+                        neededPermissions.add(Uri.parse(media.uri))
+                        continue
+                    }
                     
-                    // Attempt Copy
+                    // Check for Q RecoverableSecurityException (Permission needed)
+                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && e is android.app.RecoverableSecurityException) {
+                        return e.userAction.actionIntent.intentSender
+                    }
+
+                    // Method 2: Copy + Delete (Robust Fallback for non-permission errors like cross-volume)
                     try {
-                        // CHECK DUPLICATE BEFORE COPYING to prevent duplication loop on retry
                         if (doesSearchResultExist(media.name, targetPath)) {
-                             // Already copied (likely from previous attempt), just needs deletion
                              failedMoves.add(media)
                         } else {
                             val newUri = copyMedia(media, targetPath)
                             if (newUri != null) {
-                                // Copy successful, track original for deletion
                                 failedMoves.add(media)
                             }
                         }
@@ -159,13 +162,28 @@ class MediaRepositoryImpl @Inject constructor(
                 }
             }
             
+            if (neededPermissions.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val pi = MediaStore.createWriteRequest(contentResolver, neededPermissions)
+                return pi.intentSender
+            }
+            
             if (failedMoves.isNotEmpty()) {
                 // We have successfully copied "failedMoves", now delete the originals
-                // Android R+ needs createTrashRequest/createDeleteRequest logic which deleteMedia already has
-                return deleteMedia(failedMoves)
+                // Android R+ needs createDeleteRequest logic for permanent removal
+                return deleteForever(failedMoves)
             }
         }
         return null
+    }
+
+    override suspend fun copyMedia(mediaList: List<Media>, targetPath: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            for (media in mediaList) {
+                if (!doesSearchResultExist(media.name, targetPath)) {
+                    copyMedia(media, targetPath)
+                }
+            }
+        }
     }
 
     private fun doesSearchResultExist(name: String, targetPath: String): Boolean {
@@ -255,6 +273,7 @@ class MediaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteForever(mediaList: List<Media>): android.content.IntentSender? {
+        if (mediaList.isEmpty()) return null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val uris = mediaList.map { Uri.parse(it.uri) }
             val pi = MediaStore.createDeleteRequest(contentResolver, uris) // Permanent Delete
@@ -302,7 +321,7 @@ class MediaRepositoryImpl @Inject constructor(
             null
         }
 
-        val sortOrder = "${MediaStore.MediaColumns.DATE_TAKEN} DESC"
+        val sortOrder = "${MediaStore.MediaColumns.DATE_ADDED} DESC"
 
         val queryUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
              MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
@@ -460,7 +479,7 @@ class MediaRepositoryImpl @Inject constructor(
 
         val bundle = Bundle().apply {
             putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
-            putString("android:query-arg-sql-sort-order", "${MediaStore.MediaColumns.DATE_TAKEN} DESC")
+            putString("android:query-arg-sql-sort-order", "${MediaStore.MediaColumns.DATE_ADDED} DESC")
         }
 
         val queryUri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)

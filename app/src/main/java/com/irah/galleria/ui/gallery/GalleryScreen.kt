@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,21 +18,21 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -51,6 +52,7 @@ import androidx.navigation.NavController
 import com.irah.galleria.domain.usecase.FilterType
 import com.irah.galleria.domain.util.MediaOrder
 import com.irah.galleria.domain.util.OrderType
+import com.irah.galleria.ui.album.AlbumDetailEvent
 import com.irah.galleria.ui.gallery.components.MediaGridItem
 import com.irah.galleria.ui.navigation.Screen
 
@@ -64,10 +66,18 @@ fun GalleryScreen(
     val state by viewModel.state.collectAsState()
     val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
 
+    androidx.activity.compose.BackHandler(enabled = state.isSelectionMode) {
+        viewModel.onEvent(GalleryEvent.ClearSelection)
+    }
+
     var showSortMenu by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
 
-    var showMoveSheet by remember { mutableStateOf(false) }
+    var showAlbumSelectionSheet by remember { mutableStateOf(false) }
+    var isCopyOperation by remember { mutableStateOf(false) }
+    
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    
     var showCreateAlbumDialog by remember { mutableStateOf(false) }
     var newAlbumName by remember { mutableStateOf("") }
 
@@ -77,33 +87,65 @@ fun GalleryScreen(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-             pendingAction?.invoke()
+             val action = pendingAction
              pendingAction = null
-             viewModel.onEvent(GalleryEvent.ClearSelection)
+             if (action != null) {
+                 action.invoke()
+             } else {
+                 viewModel.onEvent(GalleryEvent.ClearSelection)
+             }
         } else {
             pendingAction = null
         }
     }
 
+    val performDelete = {
+        viewModel.deleteSelectedMedia { intentSender ->
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+                 pendingAction = { 
+                    viewModel.deleteSelectedMedia { sender ->
+                        permissionLauncher.launch(
+                            IntentSenderRequest.Builder(sender).build()
+                        )
+                    }
+                 }
+            }
+            permissionLauncher.launch(
+                IntentSenderRequest.Builder(intentSender).build()
+            )
+        }
+    }
+    
+    // ... (Scroll connection) ...
     val bottomBarVisibility = com.irah.galleria.ui.LocalBottomBarVisibility.current
     val nestedScrollConnection = remember {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
             override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                if (available.y < -5) { // Scheduling hide
-                    bottomBarVisibility.value = false
-                } else if (available.y > 5) { // Scheduling show
-                    bottomBarVisibility.value = true
-                }
+                if (available.y < -5) { bottomBarVisibility.value = false } 
+                else if (available.y > 5) { bottomBarVisibility.value = true }
                 return super.onPreScroll(available, source)
             }
         }
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
-
-    Scaffold(
+    val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
+    
+    com.irah.galleria.ui.theme.GlassScaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
+            // ... (Color definitions - unchanged) ...
+            val topBarColors = if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
+                TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+            } else {
+                TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            }
+            val normalTopBarColors = if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
+                TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+            } else {
+                TopAppBarDefaults.topAppBarColors()
+            }
+
             if (state.isSelectionMode) {
                 TopAppBar(
                     title = { Text("${state.selectedMediaIds.size} Selected") },
@@ -112,44 +154,40 @@ fun GalleryScreen(
                             Icon(Icons.Default.Close, contentDescription = "Clear Selection")
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
+                    colors = topBarColors,
                     actions = {
-                        IconButton(onClick = { showMoveSheet = true }) {
+                        IconButton(onClick = { 
+                            isCopyOperation = false
+                            showAlbumSelectionSheet = true 
+                        }) {
                             Icon(Icons.Default.Folder, contentDescription = "Move to Album")
+                        }
+                        IconButton(onClick = { 
+                            isCopyOperation = true
+                            showAlbumSelectionSheet = true 
+                        }) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy to Album")
                         }
                         IconButton(onClick = { viewModel.shareSelectedMedia(context) }) {
                             Icon(Icons.Default.Share, contentDescription = "Share")
                         }
-                        IconButton(onClick = {
-                            val action = {
-                                viewModel.deleteSelectedMedia { intentSender ->
-                                    pendingAction = { viewModel.deleteSelectedMedia { } } // Retry action (simplified, ideally re-trigger logic)
-                                    // Actually, we need to capture the retry properly.
-                                    // A simple way is to define the function locally.
-                                }
+                        IconButton(onClick = { 
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                performDelete()
+                            } else {
+                                showDeleteDialog = true 
                             }
-                            // Let's use a robust recursive approach
-                            fun performDelete() {
-                                viewModel.deleteSelectedMedia { intentSender ->
-                                    pendingAction = { performDelete() }
-                                    permissionLauncher.launch(
-                                        IntentSenderRequest.Builder(intentSender).build()
-                                    )
-                                }
-                            }
-                            performDelete()
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }
                     }
                 )
             } else {
-                TopAppBar( // ... existing top bar code ...
+                // ... (Normal TopBar - unchanged) ...
+                TopAppBar(
                     title = { Text("Gallery") },
+                    colors = normalTopBarColors,
                     actions = {
-                        // Filter Action
                         IconButton(onClick = { showFilterMenu = true }) {
                             Icon(imageVector = Icons.Default.FilterList, contentDescription = "Filter")
                         }
@@ -157,38 +195,10 @@ fun GalleryScreen(
                             expanded = showFilterMenu,
                             onDismissRequest = { showFilterMenu = false }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("All") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.FilterChange(FilterType.All))
-                                    showFilterMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Images Only") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.FilterChange(FilterType.Images))
-                                    showFilterMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Videos Only") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.FilterChange(FilterType.Videos))
-                                    showFilterMenu = false
-                                }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text("Recycle Bin") },
-                                onClick = {
-                                    showFilterMenu = false
-                                    navController.navigate(Screen.RecycleBin.route)
-                                }
-                            )
+                            DropdownMenuItem(text = { Text("All") }, onClick = { viewModel.onEvent(GalleryEvent.FilterChange(FilterType.All)); showFilterMenu = false })
+                            DropdownMenuItem(text = { Text("Images Only") }, onClick = { viewModel.onEvent(GalleryEvent.FilterChange(FilterType.Images)); showFilterMenu = false })
+                            DropdownMenuItem(text = { Text("Videos Only") }, onClick = { viewModel.onEvent(GalleryEvent.FilterChange(FilterType.Videos)); showFilterMenu = false })
                         }
-
-                        // Sort Action
                         IconButton(onClick = { showSortMenu = true }) {
                             Icon(imageVector = Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
                         }
@@ -196,48 +206,12 @@ fun GalleryScreen(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("Date (Newest)") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Date(OrderType.Descending)))
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Date (Oldest)") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Date(OrderType.Ascending)))
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Name (A-Z)") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Name(OrderType.Ascending)))
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Name (Z-A)") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Name(OrderType.Descending)))
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Size (Largest)") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Size(OrderType.Descending)))
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Size (Smallest)") },
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Size(OrderType.Ascending)))
-                                    showSortMenu = false
-                                }
-                            )
+                            DropdownMenuItem(text = { Text("Date (Newest)") }, onClick = { viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Date(OrderType.Descending))); showSortMenu = false })
+                            DropdownMenuItem(text = { Text("Date (Oldest)") }, onClick = { viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Date(OrderType.Ascending))); showSortMenu = false })
+                            DropdownMenuItem(text = { Text("Name (A-Z)") }, onClick = { viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Name(OrderType.Ascending))); showSortMenu = false })
+                            DropdownMenuItem(text = { Text("Name (Z-A)") }, onClick = { viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Name(OrderType.Descending))); showSortMenu = false })
+                            DropdownMenuItem(text = { Text("Size (Largest)") }, onClick = { viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Size(OrderType.Descending))); showSortMenu = false })
+                            DropdownMenuItem(text = { Text("Size (Smallest)") }, onClick = { viewModel.onEvent(GalleryEvent.OrderChange(MediaOrder.Size(OrderType.Ascending))); showSortMenu = false })
                         }
                     }
                 )
@@ -245,31 +219,62 @@ fun GalleryScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (showMoveSheet) {
-                com.irah.galleria.ui.gallery.components.AlbumSelectionSheet(
-                    albums = state.albums,
-                    onAlbumSelected = { album ->
-                        showMoveSheet = false
-                        val target = album.relativePath ?: "Pictures/${album.name}"
-                        
-                        fun performMove() {
-                            viewModel.moveSelectedMedia(target) { intentSender ->
-                                pendingAction = { performMove() }
-                                permissionLauncher.launch(
-                                    IntentSenderRequest.Builder(intentSender).build()
-                                )
-                            }
+             // --- DIALOGS & SHEETS ---
+             
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text(if (settings.trashEnabled) "Move to Recycle Bin" else "Delete Permanently") },
+                    text = { 
+                        Text(if (settings.trashEnabled) 
+                            "Are you sure you want to move file(s) to recycler bin?" 
+                            else "Are you sure you want to permanently delete selected item(s)") 
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showDeleteDialog = false
+                            performDelete()
+                        }) {
+                            Text("Yes")
                         }
-                        performMove()
                     },
-                    onCreateNewAlbum = {
-                        showMoveSheet = false
-                        showCreateAlbumDialog = true
-                    },
-                    onDismissRequest = { showMoveSheet = false }
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
                 )
             }
 
+            if (showAlbumSelectionSheet) {
+                com.irah.galleria.ui.gallery.components.AlbumSelectionSheet(
+                    albums = state.albums,
+                    onAlbumSelected = { album ->
+                        showAlbumSelectionSheet = false
+                        val target = album.relativePath ?: "Pictures/${album.name}"
+                        if (isCopyOperation) {
+                            viewModel.copySelectedMedia(target)
+                        } else {
+                            fun performMove() {
+                                viewModel.moveSelectedMedia(target) { intentSender ->
+                                    pendingAction = { performMove() }
+                                    permissionLauncher.launch(
+                                        IntentSenderRequest.Builder(intentSender).build()
+                                    )
+                                }
+                            }
+                            performMove()
+                        }
+                    },
+                    onCreateNewAlbum = {
+                        showAlbumSelectionSheet = false
+                        showCreateAlbumDialog = true
+                    },
+                    onDismissRequest = { showAlbumSelectionSheet = false },
+                    isCopyOperation = isCopyOperation
+                )
+            }
+            
             if (showCreateAlbumDialog) {
                 AlertDialog(
                     onDismissRequest = { showCreateAlbumDialog = false },
@@ -284,20 +289,24 @@ fun GalleryScreen(
                     confirmButton = {
                         TextButton(onClick = {
                             if (newAlbumName.isNotBlank()) {
-                                val target = "Pictures/$newAlbumName"
-                                fun performMove() {
-                                    viewModel.moveSelectedMedia(target) { intentSender ->
-                                         pendingAction = { performMove() }
-                                         permissionLauncher.launch(
-                                            IntentSenderRequest.Builder(intentSender).build()
-                                         )
-                                    }
-                                }
-                                performMove()
                                 showCreateAlbumDialog = false
+                                val target = "Pictures/$newAlbumName"
+                                if (isCopyOperation) {
+                                     viewModel.copySelectedMedia(target)
+                                } else {
+                                    fun performMove() {
+                                        viewModel.moveSelectedMedia(target) { intentSender ->
+                                             pendingAction = { performMove() }
+                                             permissionLauncher.launch(
+                                                IntentSenderRequest.Builder(intentSender).build()
+                                             )
+                                        }
+                                    }
+                                    performMove()
+                                }
                             }
                         }) {
-                            Text("Create & Move")
+                            Text(if (isCopyOperation) "Create & Copy" else "Create & Move")
                         }
                     },
                     dismissButton = {
@@ -309,7 +318,7 @@ fun GalleryScreen(
             }
 
             if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                LinearProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (state.media.isEmpty()) {
                 Text(
                     "No media found",
@@ -323,67 +332,127 @@ fun GalleryScreen(
                     end = 4.dp
                 )
 
+                val mediaIds = remember(state.media) { state.media.map { it.id } }
+
                 if (settings.galleryViewType == com.irah.galleria.domain.model.GalleryViewType.GRID) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(settings.galleryGridCount),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = contentPadding,
-                        horizontalArrangement = Arrangement.spacedBy(settings.gridSpacing.dp),
-                        verticalArrangement = Arrangement.spacedBy(settings.gridSpacing.dp)
-                    ) {
-                        items(state.media) { media ->
-                            val isSelected = state.selectedMediaIds.contains(media.id)
-                            MediaGridItem(
-                                media = media,
-                                isStaggered = false,
-                                cornerRadius = settings.galleryCornerRadius,
-                                animationsEnabled = settings.animationsEnabled,
-                                isSelected = isSelected,
-                                onClick = {
-                                    if (state.isSelectionMode) {
-                                        viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
-                                    } else {
-                                        navController.navigate(
-                                            Screen.MediaViewer.route + "/${media.id}"
-                                        )
-                                    }
-                                },
-                                onLongClick = {
-                                    viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
+                    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+
+                    com.irah.galleria.ui.gallery.components.DragSelectReceiver(
+                        items = mediaIds,
+                        selectedIds = state.selectedMediaIds,
+                        onSelectionChange = { ids ->
+                             viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
+                        },
+                        getItemIndexAtPosition = { offset ->
+                            gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+                                val itemOffset = item.offset
+                                val itemSize = item.size
+                                // Add buffer for easier selection
+                                offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
+                                offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
+                            }?.index
+                        },
+                        scrollBy = { gridState.scrollBy(it) },
+                        viewportHeight = { gridState.layoutInfo.viewportSize.height }
+                    ) { dragModifier ->
+                        com.irah.galleria.ui.gallery.components.FastScroller(
+                            gridState = gridState,
+                            itemCount = state.media.size,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            LazyVerticalGrid(
+                                state = gridState,
+                                columns = GridCells.Fixed(settings.galleryGridCount),
+                                modifier = Modifier.fillMaxSize().then(dragModifier),
+                                contentPadding = contentPadding,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                items(
+                                    items = state.media,
+                                    key = { it.id },
+                                    contentType = { "media" }
+                                ) { media ->
+                                    val isSelected = state.selectedMediaIds.contains(media.id)
+                                    MediaGridItem(
+                                        media = media,
+                                        isStaggered = false,
+                                        cornerRadius = settings.galleryCornerRadius,
+                                        animationsEnabled = settings.animationsEnabled,
+                                        isSelected = isSelected,
+                                        onClick = {
+                                            if (state.isSelectionMode) {
+                                                viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
+                                            } else {
+                                                navController.navigate(
+                                                    Screen.MediaViewer.route + "/${media.id}"
+                                                )
+                                            }
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 } else {
-                    androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid(
-                        columns = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(settings.galleryGridCount),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = contentPadding,
-                        horizontalArrangement = Arrangement.spacedBy(settings.gridSpacing.dp),
-                        verticalItemSpacing = settings.gridSpacing.dp
-                    ) {
-                        items(state.media) { media ->
-                            val isSelected = state.selectedMediaIds.contains(media.id)
-                            MediaGridItem(
-                                media = media,
-                                modifier = Modifier.fillMaxWidth(),
-                                isStaggered = true,
-                                cornerRadius = settings.galleryCornerRadius,
-                                animationsEnabled = settings.animationsEnabled,
-                                isSelected = isSelected,
-                                onClick = {
-                                    if (state.isSelectionMode) {
-                                        viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
-                                    } else {
-                                        navController.navigate(
-                                            Screen.MediaViewer.route + "/${media.id}"
-                                        )
-                                    }
-                                },
-                                onLongClick = {
-                                    viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
+                    val staggeredGridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
+
+                    com.irah.galleria.ui.gallery.components.DragSelectReceiver(
+                        items = mediaIds,
+                        selectedIds = state.selectedMediaIds,
+                        onSelectionChange = { ids ->
+                             viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
+                        },
+                        getItemIndexAtPosition = { offset ->
+                            staggeredGridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+                                val itemOffset = item.offset
+                                val itemSize = item.size
+                                // Add buffer for easier selection
+                                offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
+                                offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
+                            }?.index
+                        },
+                        scrollBy = { staggeredGridState.scrollBy(it) },
+                        viewportHeight = { staggeredGridState.layoutInfo.viewportSize.height }
+                    ) { dragModifier ->
+                        com.irah.galleria.ui.gallery.components.FastScroller(
+                            staggeredGridState = staggeredGridState,
+                            itemCount = state.media.size,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid(
+                                state = staggeredGridState,
+                                columns = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(settings.galleryGridCount),
+                                modifier = Modifier.fillMaxSize().then(dragModifier),
+                                contentPadding = contentPadding,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalItemSpacing = 2.dp
+                            ) {
+                                items(
+                                    items = state.media,
+                                    key = { it.id },
+                                    contentType = { "media" }
+                                ) { media ->
+                                    val isSelected = state.selectedMediaIds.contains(media.id)
+                                    MediaGridItem(
+                                        media = media,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        isStaggered = true,
+                                        cornerRadius = settings.galleryCornerRadius,
+                                        animationsEnabled = settings.animationsEnabled,
+                                        isSelected = isSelected,
+                                        onClick = {
+                                            if (state.isSelectionMode) {
+                                                viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
+                                            } else {
+                                                navController.navigate(
+                                                    Screen.MediaViewer.route + "/${media.id}"
+                                                )
+                                            }
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 }

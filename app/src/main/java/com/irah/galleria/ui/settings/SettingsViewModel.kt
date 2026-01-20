@@ -27,6 +27,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
 
+    fun setUiMode(mode: com.irah.galleria.domain.model.UiMode) {
+        viewModelScope.launch { settingsRepository.setUiMode(mode) }
+    }
+
     fun setGalleryViewType(type: GalleryViewType) {
         viewModelScope.launch { settingsRepository.setGalleryViewType(type) }
     }
@@ -63,8 +67,16 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setUseDynamicColor(useDynamic) }
     }
 
-    fun setGridSpacing(spacing: Int) {
-        viewModelScope.launch { settingsRepository.setGridSpacing(spacing) }
+    fun setAlbumDetailViewType(type: GalleryViewType) {
+        viewModelScope.launch { settingsRepository.setAlbumDetailViewType(type) }
+    }
+
+    fun setAlbumDetailGridCount(count: Int) {
+        viewModelScope.launch { settingsRepository.setAlbumDetailGridCount(count) }
+    }
+
+    fun setAlbumDetailCornerRadius(radius: Int) {
+        viewModelScope.launch { settingsRepository.setAlbumDetailCornerRadius(radius) }
     }
 
     fun setMaxBrightness(enabled: Boolean) {
@@ -73,5 +85,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setVideoAutoplay(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setVideoAutoplay(enabled) }
+    }
+
+    fun setTrashEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTrashEnabled(enabled) }
     }
 }

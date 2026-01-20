@@ -20,9 +20,11 @@ data class RecycleBinState(
 
 sealed class RecycleBinEvent {
     data class ToggleSelection(val mediaId: Long): RecycleBinEvent()
+    data class UpdateSelection(val selectedIds: Set<Long>): RecycleBinEvent()
     object ClearSelection: RecycleBinEvent()
     object RestoreSelected: RecycleBinEvent()
     object DeleteSelectedForever: RecycleBinEvent()
+    object EmptyBin: RecycleBinEvent()
 }
 
 @HiltViewModel
@@ -56,6 +58,12 @@ class RecycleBinViewModel @Inject constructor(
                     isSelectionMode = current.isNotEmpty()
                 )
             }
+            is RecycleBinEvent.UpdateSelection -> {
+                _state.value = _state.value.copy(
+                    selectedMediaIds = event.selectedIds,
+                    isSelectionMode = event.selectedIds.isNotEmpty()
+                )
+            }
             RecycleBinEvent.ClearSelection -> {
                 _state.value = _state.value.copy(
                     selectedMediaIds = emptySet(),
@@ -67,6 +75,9 @@ class RecycleBinViewModel @Inject constructor(
             }
             RecycleBinEvent.DeleteSelectedForever -> {
                 // Handled by UI invocation since it needs intent sender
+            }
+            RecycleBinEvent.EmptyBin -> {
+                 // Handled by UI invocation
             }
         }
     }
@@ -91,6 +102,18 @@ class RecycleBinViewModel @Inject constructor(
                 onIntentSender(intentSender)
             } else {
                 onEvent(RecycleBinEvent.ClearSelection)
+            }
+        }
+    }
+
+    fun emptyBin(onIntentSender: (android.content.IntentSender) -> Unit) {
+        viewModelScope.launch {
+            val allTrashed = _state.value.media
+            if (allTrashed.isNotEmpty()) {
+                val intentSender = repository.deleteForever(allTrashed)
+                if (intentSender != null) {
+                    onIntentSender(intentSender)
+                }
             }
         }
     }

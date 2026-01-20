@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Galleria</string>
+    <string name="developer_name">Harikrishna K</string>
+    <string name="developer_email">harikrishnaktkl619@gmail.com</string>
+    <string name="github_url">https://github.com/devharikrishna</string>
+    <string name="linkedin_url">https://www.linkedin.com/in/harikrishna-k-97b560137/</string>
 </resources>

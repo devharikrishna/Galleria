@@ -4,17 +4,21 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Share
@@ -38,33 +42,80 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.irah.galleria.ui.album.AlbumDetailEvent
+import com.irah.galleria.ui.gallery.GalleryEvent
 import com.irah.galleria.ui.gallery.components.AlbumSelectionSheet
 import com.irah.galleria.ui.gallery.components.MediaGridItem
 import com.irah.galleria.ui.navigation.Screen
+import com.irah.galleria.ui.settings.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumDetailScreen(
     navController: NavController,
-    viewModel: AlbumDetailViewModel = hiltViewModel()
+    viewModel: AlbumDetailViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
 
-    val deleteLauncher = rememberLauncherForActivityResult(
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-             viewModel.onEvent(AlbumDetailEvent.ClearSelection)
+             val action = pendingAction
+             pendingAction = null
+             if (action != null) {
+                 action.invoke()
+             } else {
+                 viewModel.onEvent(AlbumDetailEvent.ClearSelection)
+             }
+        } else {
+            pendingAction = null
         }
     }
     
-    var showMoveSheet by remember { mutableStateOf(false) }
+    val performDelete = {
+        viewModel.deleteSelectedMedia { intentSender ->
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+                 pendingAction = { 
+                    viewModel.deleteSelectedMedia { sender ->
+                        permissionLauncher.launch(
+                            IntentSenderRequest.Builder(sender).build()
+                        )
+                    }
+                 }
+            }
+            permissionLauncher.launch(
+                IntentSenderRequest.Builder(intentSender).build()
+            )
+        }
+    }
+    
+    var showAlbumSelectionSheet by remember { mutableStateOf(false) }
+    var isCopyOperation by remember { mutableStateOf(false) }
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    
     var showCreateAlbumDialog by remember { mutableStateOf(false) }
     var newAlbumName by remember { mutableStateOf("") }
+
     val albums by viewModel.albums.collectAsState(initial = emptyList())
 
-    Scaffold(
+    androidx.activity.compose.BackHandler(enabled = state.isSelectionMode) {
+        viewModel.onEvent(AlbumDetailEvent.ClearSelection)
+    }
+
+    val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
+    com.irah.galleria.ui.theme.GlassScaffold(
         topBar = {
+            val topBarColors = if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
+                androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+            } else {
+                 androidx.compose.material3.TopAppBarDefaults.topAppBarColors()
+            }
+
             if (state.isSelectionMode) {
                 TopAppBar(
                     title = { Text("${state.selectedMediaIds.size} Selected") },
@@ -73,18 +124,28 @@ fun AlbumDetailScreen(
                             Icon(Icons.Filled.Close, contentDescription = "Clear Selection")
                         }
                     },
+                    colors = topBarColors,
                      actions = {
-                        IconButton(onClick = { showMoveSheet = true }) {
+                        IconButton(onClick = { 
+                            isCopyOperation = false
+                            showAlbumSelectionSheet = true 
+                        }) {
                             Icon(Icons.Filled.Folder, contentDescription = "Move to Album")
+                        }
+                        IconButton(onClick = { 
+                            isCopyOperation = true
+                            showAlbumSelectionSheet = true 
+                        }) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy to Album")
                         }
                         IconButton(onClick = { viewModel.shareSelectedMedia(navController.context) }) {
                             Icon(Icons.Filled.Share, contentDescription = "Share")
                         }
-                        IconButton(onClick = {
-                            viewModel.deleteSelectedMedia { intentSender ->
-                                deleteLauncher.launch(
-                                    IntentSenderRequest.Builder(intentSender).build()
-                                )
+                        IconButton(onClick = { 
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                performDelete()
+                            } else {
+                                showDeleteDialog = true 
                             }
                         }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete")
@@ -94,6 +155,7 @@ fun AlbumDetailScreen(
             } else {
                 TopAppBar(
                     title = { Text(state.albumName) },
+                    colors = topBarColors,
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -104,27 +166,63 @@ fun AlbumDetailScreen(
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-             if (showMoveSheet) {
+             // --- DIALOGS & SHEETS ---
+             
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text(if (settings.trashEnabled) "Move to Recycle Bin" else "Delete Permanently") },
+                    text = { 
+                        Text(if (settings.trashEnabled) 
+                            "Are you sure you want to move file(s) to recycler bin?" 
+                            else "Are you sure you want to permanently delete selected item(s)") 
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showDeleteDialog = false
+                            performDelete()
+                        }) {
+                            Text("Yes")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+
+            if (showAlbumSelectionSheet) {
                 AlbumSelectionSheet(
                     albums = albums,
                     onAlbumSelected = { album ->
-                        showMoveSheet = false
+                        showAlbumSelectionSheet = false
                         val target = album.relativePath ?: "Pictures/${album.name}"
-                        viewModel.moveSelectedMedia(target) { intentSender ->
-                            deleteLauncher.launch(
-                                IntentSenderRequest.Builder(intentSender).build()
-                            )
+                        if (isCopyOperation) {
+                            viewModel.copySelectedMedia(target)
+                        } else {
+                            fun performMove() {
+                                viewModel.moveSelectedMedia(target) { intentSender ->
+                                    pendingAction = { performMove() }
+                                    permissionLauncher.launch(
+                                        IntentSenderRequest.Builder(intentSender).build()
+                                    )
+                                }
+                            }
+                            performMove()
                         }
                     },
                     onCreateNewAlbum = {
-                        showMoveSheet = false
+                        showAlbumSelectionSheet = false
                         showCreateAlbumDialog = true
                     },
-                    onDismissRequest = { showMoveSheet = false }
+                    onDismissRequest = { showAlbumSelectionSheet = false },
+                    isCopyOperation = isCopyOperation
                 )
             }
             
-             if (showCreateAlbumDialog) {
+            if (showCreateAlbumDialog) {
                 AlertDialog(
                     onDismissRequest = { showCreateAlbumDialog = false },
                     title = { Text("New Album") },
@@ -138,50 +236,155 @@ fun AlbumDetailScreen(
                     confirmButton = {
                         TextButton(onClick = {
                             if (newAlbumName.isNotBlank()) {
-                                viewModel.moveSelectedMedia("Pictures/$newAlbumName") { intentSender ->
-                                     deleteLauncher.launch(
-                                        IntentSenderRequest.Builder(intentSender).build()
-                                     )
-                                }
                                 showCreateAlbumDialog = false
+                                val target = "Pictures/$newAlbumName"
+                                if (isCopyOperation) {
+                                     viewModel.copySelectedMedia(target)
+                                } else {
+                                    fun performMove() {
+                                        viewModel.moveSelectedMedia(target) { intentSender ->
+                                             pendingAction = { performMove() }
+                                             permissionLauncher.launch(
+                                                IntentSenderRequest.Builder(intentSender).build()
+                                             )
+                                        }
+                                    }
+                                    performMove()
+                                }
                             }
                         }) {
-                            Text("Create & Move")
+                            Text(if (isCopyOperation) "Create & Copy" else "Create & Move")
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { showCreateAlbumDialog = false }) {
-                             Text("Cancel")
+                            Text("Cancel")
                         }
                     }
                 )
             }
             
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(100.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(state.media) { media ->
-                    val isSelected = state.selectedMediaIds.contains(media.id)
-                    MediaGridItem(
-                        media = media,
-                        isSelected = isSelected,
-                        onClick = {
-                            if (state.isSelectionMode) {
-                                viewModel.onEvent(AlbumDetailEvent.ToggleSelection(media.id))
-                            } else {
-                                navController.navigate(
-                                    Screen.MediaViewer.route + "/${media.id}?albumId=${media.bucketId}"
+            val mediaIds = remember(state.media) { state.media.map { it.id } }
+
+            if (settings.albumDetailViewType == com.irah.galleria.domain.model.GalleryViewType.GRID) {
+                val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                
+                com.irah.galleria.ui.gallery.components.DragSelectReceiver(
+                    items = mediaIds,
+                    selectedIds = state.selectedMediaIds,
+                    onSelectionChange = { ids ->
+                        viewModel.onEvent(AlbumDetailEvent.UpdateSelection(ids))
+                    },
+                    getItemIndexAtPosition = { offset ->
+                        gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+                            val itemOffset = item.offset
+                            val itemSize = item.size
+                            // Add buffer
+                            offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
+                            offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
+                        }?.index
+                    },
+                    scrollBy = { gridState.scrollBy(it) },
+                    viewportHeight = { gridState.layoutInfo.viewportSize.height }
+                ) { dragModifier ->
+                    com.irah.galleria.ui.gallery.components.FastScroller(
+                        gridState = gridState,
+                        itemCount = state.media.size,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        LazyVerticalGrid(
+                            state = gridState,
+                            columns = GridCells.Fixed(settings.albumDetailGridCount),
+                            modifier = Modifier.fillMaxSize().then(dragModifier),
+                            contentPadding = PaddingValues(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(
+                                items = state.media,
+                                key = { it.id },
+                                contentType = { "media" }
+                            ) { media ->
+                                val isSelected = state.selectedMediaIds.contains(media.id)
+                                MediaGridItem(
+                                    media = media,
+                                    isSelected = isSelected,
+                                    isStaggered = false,
+                                    cornerRadius = settings.albumDetailCornerRadius,
+                                    onClick = {
+                                        if (state.isSelectionMode) {
+                                            viewModel.onEvent(AlbumDetailEvent.ToggleSelection(media.id))
+                                        } else {
+                                            navController.navigate(
+                                                Screen.MediaViewer.route + "/${media.id}?albumId=${media.bucketId}"
+                                            )
+                                        }
+                                    }
                                 )
                             }
-                        },
-                        onLongClick = {
-                            viewModel.onEvent(AlbumDetailEvent.ToggleSelection(media.id))
                         }
-                    )
+                    }
+                }
+            } else {
+                // Staggered Layout
+                val staggeredGridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
+                
+                com.irah.galleria.ui.gallery.components.DragSelectReceiver(
+                    items = mediaIds,
+                    selectedIds = state.selectedMediaIds,
+                    onSelectionChange = { ids ->
+                        viewModel.onEvent(AlbumDetailEvent.UpdateSelection(ids))
+                    },
+                    getItemIndexAtPosition = { offset ->
+                        staggeredGridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+                            val itemOffset = item.offset
+                            val itemSize = item.size
+                            // Add buffer
+                            offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
+                            offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
+                        }?.index
+                    },
+                    scrollBy = { staggeredGridState.scrollBy(it) },
+                    viewportHeight = { staggeredGridState.layoutInfo.viewportSize.height }
+                ) { dragModifier ->
+                    com.irah.galleria.ui.gallery.components.FastScroller(
+                        staggeredGridState = staggeredGridState,
+                        itemCount = state.media.size,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid(
+                            state = staggeredGridState,
+                            columns = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(settings.albumDetailGridCount),
+                            modifier = Modifier.fillMaxSize().then(dragModifier),
+                            contentPadding = PaddingValues(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalItemSpacing = 2.dp
+                        ) {
+                             items(
+                                 items = state.media,
+                                 key = { it.id },
+                                 contentType = { "media" }
+                             ) { media ->
+                                 val isSelected = state.selectedMediaIds.contains(media.id)
+                                 MediaGridItem(
+                                     media = media,
+                                     isSelected = isSelected,
+                                     isStaggered = true,
+                                     cornerRadius = settings.albumDetailCornerRadius,
+                                     modifier = Modifier.fillMaxWidth(),
+                                     onClick = {
+                                         if (state.isSelectionMode) {
+                                             viewModel.onEvent(AlbumDetailEvent.ToggleSelection(media.id))
+                                         } else {
+                                             navController.navigate(
+                                                 Screen.MediaViewer.route + "/${media.id}?albumId=${media.bucketId}"
+                                             )
+                                         }
+                                     }
+                                 )
+                             }
+                        }
+                    }
                 }
             }
         }

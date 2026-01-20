@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.core.net.toUri
 
+import com.irah.galleria.domain.repository.SettingsRepository
+import kotlinx.coroutines.flow.first
 data class GalleryState(
     val media: List<Media> = emptyList(),
     val albums: List<com.irah.galleria.domain.model.Album> = emptyList(),
@@ -27,11 +29,13 @@ data class GalleryState(
     val selectedMediaIds: Set<Long> = emptySet()
 )
 
+
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val getMediaUseCase: GetMediaUseCase,
     private val getAlbumsUseCase: com.irah.galleria.domain.usecase.GetAlbumsUseCase,
-    private val mediaRepository: com.irah.galleria.domain.repository.MediaRepository
+    private val mediaRepository: com.irah.galleria.domain.repository.MediaRepository,
+    private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(GalleryState())
@@ -98,13 +102,20 @@ class GalleryViewModel @Inject constructor(
                     isSelectionMode = false
                 )
             }
+            is GalleryEvent.UpdateSelection -> {
+                _state.value = _state.value.copy(
+                    selectedMediaIds = event.selectedIds,
+                    isSelectionMode = event.selectedIds.isNotEmpty()
+                )
+            }
         }
     }
 
     fun deleteSelectedMedia(onIntentSender: (android.content.IntentSender) -> Unit) {
         viewModelScope.launch {
             val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
-            val intentSender = mediaRepository.deleteMedia(selectedMedia)
+            val intentSender = deleteMediaUseCase(selectedMedia)
+            
             if (intentSender != null) {
                 onIntentSender(intentSender)
             } else {
@@ -122,6 +133,14 @@ class GalleryViewModel @Inject constructor(
             } else {
                  onEvent(GalleryEvent.ClearSelection)
             }
+        }
+    }
+
+    fun copySelectedMedia(targetPath: String) {
+        viewModelScope.launch {
+            val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
+            mediaRepository.copyMedia(selectedMedia, targetPath)
+            onEvent(GalleryEvent.ClearSelection)
         }
     }
     fun shareSelectedMedia(context: android.content.Context) {
@@ -153,5 +172,6 @@ sealed class GalleryEvent {
     data class OrderChange(val mediaOrder: MediaOrder): GalleryEvent()
     data class FilterChange(val filterType: FilterType): GalleryEvent()
     data class ToggleSelection(val mediaId: Long): GalleryEvent()
+    data class UpdateSelection(val selectedIds: Set<Long>): GalleryEvent()
     object ClearSelection: GalleryEvent()
 }
