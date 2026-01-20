@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.gallery.components
-
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
@@ -42,7 +41,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
 @Composable
 fun FastScroller(
     modifier: Modifier = Modifier,
@@ -55,49 +53,36 @@ fun FastScroller(
         val scope = rememberCoroutineScope()
         val haptic = LocalHapticFeedback.current
         val density = LocalDensity.current
-
         Box(modifier = Modifier.fillMaxSize()) {
             content()
         }
-
-        // Calculate scroll progress and total items
         val scrollInfo by remember(gridState, staggeredGridState, itemCount) {
             derivedStateOf {
                 var firstVisibleItemIndex = 0
-                
                 if (gridState != null) {
                     firstVisibleItemIndex = gridState.firstVisibleItemIndex
                 } else if (staggeredGridState != null) {
                     firstVisibleItemIndex = staggeredGridState.firstVisibleItemIndex
                 }
-
                 if (itemCount == 0) 0f to 0 else {
                     val progress = firstVisibleItemIndex.toFloat() / itemCount.toFloat()
                     progress to itemCount
                 }
             }
         }
-
         val (scrollProgress, totalItems) = scrollInfo
-        
         val trackHeight = maxHeight
         val thumbHeight = 48.dp
         val thumbHeightPx = with(density) { thumbHeight.toPx() }
         val trackHeightPx = with(density) { trackHeight.toPx() }
-        
-        // State for the drag interaction
         var isDragging by remember { mutableStateOf(false) }
         var dragOffset by remember { mutableFloatStateOf(0f) }
-
-        // Visibility State
         var isVisible by remember { mutableStateOf(false) }
         val alpha by androidx.compose.animation.core.animateFloatAsState(
             targetValue = if (isVisible) 1f else 0f,
             animationSpec = tween(durationMillis = 300),
             label = "Thumb Alpha"
         )
-
-        // Auto-hide logic
         LaunchedEffect(scrollProgress, isDragging) {
             if (isDragging) {
                 isVisible = true
@@ -107,49 +92,39 @@ fun FastScroller(
                 isVisible = false
             }
         }
-
-        // Sync drag offset with scroll position when NOT dragging
         LaunchedEffect(scrollProgress, isDragging, trackHeightPx) {
             if (!isDragging && totalItems > 0) {
                 dragOffset = scrollProgress * (trackHeightPx - thumbHeightPx)
             }
         }
-
-        // Animate thumb width and corner radius
         val thumbWidth by animateDpAsState(
             targetValue = if (isDragging) 20.dp else 6.dp,
             animationSpec = tween(durationMillis = 200), 
             label = "Thumb Width"
         )
-        
         val thumbElevation by animateDpAsState(
             targetValue = if (isDragging) 6.dp else 2.dp,
             label = "Thumb Elevation"
         )
-
         val draggableState = rememberDraggableState { delta ->
             if (totalItems > 0) {
                 isDragging = true
                 dragOffset = (dragOffset + delta).coerceIn(0f, trackHeightPx - thumbHeightPx)
-                
                 val newProgress = dragOffset / (trackHeightPx - thumbHeightPx)
                 val targetIndex = (newProgress * totalItems).roundToInt()
                     .coerceIn(0, totalItems - 1)
-                
                 scope.launch {
                     gridState?.scrollToItem(targetIndex)
                     staggeredGridState?.scrollToItem(targetIndex)
                 }
             }
         }
-
-        // Only show/enable interaction if there are enough items
         if (totalItems > 0) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 2.dp)
-                    .width(40.dp) // Extended Hit area
+                    .width(40.dp)  
                     .fillMaxHeight()
                     .draggable(
                         state = draggableState,
@@ -161,7 +136,6 @@ fun FastScroller(
                         onDragStopped = { isDragging = false }
                     )
             ) {
-                // Thumb
                 Row(
                     modifier = Modifier
                         .offset { IntOffset(0, dragOffset.roundToInt()) }
@@ -173,7 +147,7 @@ fun FastScroller(
                         modifier = Modifier
                             .height(thumbHeight)
                             .width(thumbWidth),
-                        shape = RoundedCornerShape(24.dp), // Fully rounded
+                        shape = RoundedCornerShape(24.dp),  
                         color = MaterialTheme.colorScheme.primary,
                         shadowElevation = thumbElevation,
                         tonalElevation = thumbElevation

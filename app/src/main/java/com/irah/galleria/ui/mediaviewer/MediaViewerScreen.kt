@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.mediaviewer
-
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -67,9 +66,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.core.net.toUri
-
 import androidx.compose.ui.input.pointer.pointerInput
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MediaViewerScreen(
@@ -79,25 +76,19 @@ fun MediaViewerScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
-
     val context = LocalContext.current
     val window = (context as? Activity)?.window
     val insetsController = remember(window) { 
         window?.let { WindowCompat.getInsetsController(it, it.decorView) }
     }
-    
     var showControls by remember { mutableStateOf(true) }
     var showInfoSheet by remember { mutableStateOf(false) }
-
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            // Media deleted successfully
         }
     }
-
-    // Handle Max Brightness
     LaunchedEffect(settings.maxBrightness) {
         window?.let { win ->
             val params = win.attributes
@@ -105,8 +96,6 @@ fun MediaViewerScreen(
             win.attributes = params
         }
     }
-    
-    // Cleanup brightness on exit
     DisposableEffect(Unit) {
         onDispose {
             window?.let { win ->
@@ -116,7 +105,6 @@ fun MediaViewerScreen(
             }
         }
     }
-
     LaunchedEffect(showControls) {
         if (showControls) {
             insetsController?.show(WindowInsetsCompat.Type.systemBars())
@@ -125,22 +113,14 @@ fun MediaViewerScreen(
             insetsController?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
-    
-    // Initial hide if controls are initially hidden (optional, currently they start shown)
-    // Ensure navigation bar color matches
     LaunchedEffect(Unit) {
-        // Optional: Force transparent system bars for this screen if needed, 
-        // but Edge-to-Edge should handle it mostly.
     }
-
     if (!state.isLoading && state.mediaList.isNotEmpty()) {
         val pagerState = rememberPagerState(
             initialPage = state.initialIndex,
             pageCount = { state.mediaList.size }
         )
-
         val currentMedia = state.mediaList[pagerState.currentPage]
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -163,8 +143,6 @@ fun MediaViewerScreen(
                     )
                 }
             }
-
-            // Top Bar
             AnimatedVisibility(
                 visible = showControls,
                 enter = fadeIn(),
@@ -174,7 +152,7 @@ fun MediaViewerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Transparent) // Removed semi-transparent layer
+                        .background(Color.Transparent)  
                         .systemBarsPadding()
                         .padding(horizontal = 8.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -185,8 +163,6 @@ fun MediaViewerScreen(
                     }
                 }
             }
-
-            // Bottom Bar
             AnimatedVisibility(
                 visible = showControls,
                 enter = fadeIn(),
@@ -196,7 +172,7 @@ fun MediaViewerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Transparent) // Removed semi-transparent layer
+                        .background(Color.Transparent)  
                         .systemBarsPadding()
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -228,7 +204,6 @@ fun MediaViewerScreen(
                 }
             }
         }
-
         if (showInfoSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showInfoSheet = false },
@@ -237,14 +212,12 @@ fun MediaViewerScreen(
                 MediaInfoContent(media = currentMedia)
             }
         }
-
     } else {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
     }
 }
-
 @Composable
 fun MediaPage(
     media: Media,
@@ -258,12 +231,11 @@ fun MediaPage(
             if (isSelected) {
                 VideoPlayer(
                     uri = media.uri.toUri(),
-                    isSelected = true, // It is selected if we are here
+                    isSelected = true,  
                     controllerVisible = showControls,
                     onControllerVisibilityChanged = onVideoControlVisibilityChange
                 )
             } else {
-                // Show Thumbnail with Play Icon
                 val painter = rememberAsyncImagePainter(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(media.uri)
@@ -297,12 +269,10 @@ fun MediaPage(
         }
     }
 }
-
 @Composable
 fun MediaInfoContent(media: Media) {
     Column(modifier = Modifier.padding(16.dp).padding(bottom = 32.dp)) {
         Text("Details", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
-        
         InfoRow(label = "Name", value = media.name)
         InfoRow(label = "Path", value = media.path)
         InfoRow(label = "Size", value = formatSize(media.size))
@@ -310,7 +280,6 @@ fun MediaInfoContent(media: Media) {
         InfoRow(label = "Resolution", value = "${media.width} x ${media.height}")
     }
 }
-
 @Composable
 fun InfoRow(label: String, value: String) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
@@ -318,16 +287,12 @@ fun InfoRow(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }
-
 fun formatSize(size: Long): String {
     val kb = size / 1024.0
     val mb = kb / 1024.0
     return if (mb > 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
 }
-
 fun formatDate(timestamp: Long): String {
-    // timestamp usually in seconds from MediaStore for date_added, but date_taken is millis?
-    // MediaStore.MediaColumns.DATE_TAKEN is Milliseconds since 1970
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }

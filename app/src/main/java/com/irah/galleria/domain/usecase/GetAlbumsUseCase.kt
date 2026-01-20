@@ -1,5 +1,4 @@
 package com.irah.galleria.domain.usecase
-
 import com.irah.galleria.domain.model.Album
 import com.irah.galleria.domain.repository.MediaRepository
 import com.irah.galleria.domain.util.MediaOrder
@@ -7,7 +6,6 @@ import com.irah.galleria.domain.util.OrderType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
-
 class GetAlbumsUseCase @Inject constructor(
     private val repository: MediaRepository
 ) {
@@ -20,7 +18,7 @@ class GetAlbumsUseCase @Inject constructor(
                     when(mediaOrder) {
                         is MediaOrder.Date -> albums.sortedBy { it.timestamp }
                         is MediaOrder.Name -> albums.sortedBy { it.name.lowercase() }
-                        is MediaOrder.Size -> albums.sortedBy { it.count } // Sort by count for "Size" in albums context? Or just ignore? User said "Sort methods : date, Name, File Size". File size for album could be total size or count. Let's use count for now as "Size".
+                        is MediaOrder.Size -> albums.sortedBy { it.count }  
                     }
                 }
                 is OrderType.Descending -> {

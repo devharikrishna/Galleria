@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.theme
-
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -12,29 +11,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.toArgb
-
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
     tertiary = Pink80
 )
-
 private val LightColorScheme = lightColorScheme(
     primary = Purple40,
     secondary = PurpleGrey40,
     tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
 )
-
 @Composable
 fun GalleriaTheme(
     themeMode: com.irah.galleria.domain.model.ThemeMode = com.irah.galleria.domain.model.ThemeMode.SYSTEM,
@@ -48,14 +34,12 @@ fun GalleriaTheme(
         com.irah.galleria.domain.model.ThemeMode.DARK -> true
         com.irah.galleria.domain.model.ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-
     val colorScheme = when {
         useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             try {
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             } catch (e: Exception) {
-                // Fallback if dynamic color fails
                 val primary = androidx.compose.ui.graphics.Color(accentColor.toInt())
                 val secondary = primary.copy(alpha = 0.8f) 
                 val tertiary = androidx.compose.ui.graphics.Color.Gray 
@@ -64,15 +48,13 @@ fun GalleriaTheme(
             }
         }
         else -> {
-            // Safe color construction
             val primary = try {
                 androidx.compose.ui.graphics.Color(accentColor.toInt())
             } catch (e: Exception) {
-                androidx.compose.ui.graphics.Color(0xFF6650a4) // Default Purple
+                androidx.compose.ui.graphics.Color(0xFF6650a4)  
             }
             val secondary = primary.copy(alpha = 0.8f) 
             val tertiary = androidx.compose.ui.graphics.Color.Gray 
-
             if (darkTheme) {
                 darkColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
             } else {
@@ -80,7 +62,6 @@ fun GalleriaTheme(
             }
         }
     }
-
     val view = androidx.compose.ui.platform.LocalView.current
     if (!view.isInEditMode) {
         androidx.compose.runtime.SideEffect {
@@ -89,7 +70,6 @@ fun GalleriaTheme(
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
-
     androidx.compose.runtime.CompositionLocalProvider(
         LocalUiMode provides uiMode,
         LocalIsDarkTheme provides darkTheme
@@ -101,5 +81,4 @@ fun GalleriaTheme(
         )
     }
 }
-
 val LocalIsDarkTheme = androidx.compose.runtime.staticCompositionLocalOf { false }

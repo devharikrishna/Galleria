@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.gallery.components
-
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,7 +28,6 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.irah.galleria.domain.model.Media
 import com.irah.galleria.ui.common.shimmer
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaGridItem(
@@ -44,13 +42,10 @@ fun MediaGridItem(
     val containerModifier = if (!isStaggered) {
         modifier.aspectRatio(1f)
     } else {
-        // Calculate aspect ratio but CLAMP it to prevent slivers or mega-tall items
-        // 0.6f (~portrait) to 1.33f (4:3 landscape). Wide panoramas will be cropped to 4:3.
         val rawRatio = if (media.height > 0) media.width.toFloat() / media.height.toFloat() else 1f
         val ratio = rawRatio.coerceIn(0.6f, 1.33f)
         modifier.aspectRatio(ratio)
     }
-
     Box(
         modifier = containerModifier
             .padding(2.dp)
@@ -65,8 +60,6 @@ fun MediaGridItem(
                 .crossfade(animationsEnabled)
                 .build()
         )
-
-        // Show Shimmer while loading
         if (painter.state is AsyncImagePainter.State.Loading) {
             Box(
                 modifier = Modifier
@@ -74,15 +67,12 @@ fun MediaGridItem(
                     .shimmer(animationsEnabled)
             )
         }
-
         Image(
             painter = painter,
             contentDescription = media.name,
             contentScale = ContentScale.Crop, 
             modifier = Modifier.fillMaxSize()
         )
-
-        // Selection Overlay
         if (isSelected) {
             Box(
                 modifier = Modifier
@@ -98,7 +88,6 @@ fun MediaGridItem(
                 )
             }
         }
-
         if (media.isVideo && !isSelected) {
             Icon(
                 imageVector = Icons.Default.PlayCircleFilled,

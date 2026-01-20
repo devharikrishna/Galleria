@@ -1,5 +1,4 @@
 package com.irah.galleria.data.repository
-
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -16,15 +15,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
-
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
 class SettingsRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : SettingsRepository {
-
     private val dataStore = context.dataStore
-
     private object Keys {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val VIEW_TYPE = stringPreferencesKey("view_type")
@@ -44,7 +39,6 @@ class SettingsRepositoryImpl @Inject constructor(
         val UI_MODE = stringPreferencesKey("ui_mode")
         val TRASH_ENABLED = booleanPreferencesKey("trash_enabled")
     }
-
     override val settings: Flow<AppSettings> = dataStore.data.map { preferences ->
         AppSettings(
             themeMode = try {
@@ -74,71 +68,54 @@ class SettingsRepositoryImpl @Inject constructor(
             trashEnabled = preferences[Keys.TRASH_ENABLED] ?: true
         )
     }
-
     override suspend fun setThemeMode(mode: ThemeMode) {
         dataStore.edit { it[Keys.THEME_MODE] = mode.name }
     }
-
     override suspend fun setGalleryViewType(type: GalleryViewType) {
         dataStore.edit { it[Keys.VIEW_TYPE] = type.name }
     }
-
     override suspend fun setGalleryGridCount(count: Int) {
         dataStore.edit { it[Keys.GALLERY_GRID_COUNT] = count }
     }
-
     override suspend fun setAlbumGridCount(count: Int) {
         dataStore.edit { it[Keys.ALBUM_GRID_COUNT] = count }
     }
-
     override suspend fun setShowMediaCount(show: Boolean) {
         dataStore.edit { it[Keys.SHOW_MEDIA_COUNT] = show }
     }
-
     override suspend fun setAnimationsEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.ANIMATIONS_ENABLED] = enabled }
     }
-
     override suspend fun setGalleryCornerRadius(radius: Int) {
         dataStore.edit { it[Keys.GALLERY_CORNER_RADIUS] = radius }
     }
-
     override suspend fun setAlbumCornerRadius(radius: Int) {
         dataStore.edit { it[Keys.ALBUM_CORNER_RADIUS] = radius }
     }
-
     override suspend fun setAccentColor(colorValue: Long) {
         dataStore.edit { it[Keys.ACCENT_COLOR] = colorValue }
     }
-
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
         dataStore.edit { it[Keys.USE_DYNAMIC_COLOR] = useDynamic }
     }
-
     override suspend fun setAlbumDetailViewType(type: GalleryViewType) {
         dataStore.edit { it[Keys.ALBUM_DETAIL_VIEW_TYPE] = type.name }
     }
-    
     override suspend fun setAlbumDetailGridCount(count: Int) {
         dataStore.edit { it[Keys.ALBUM_DETAIL_GRID_COUNT] = count }
     }
-
     override suspend fun setAlbumDetailCornerRadius(radius: Int) {
         dataStore.edit { it[Keys.ALBUM_DETAIL_CORNER_RADIUS] = radius }
     }
-
     override suspend fun setMaxBrightness(enabled: Boolean) {
         dataStore.edit { it[Keys.MAX_BRIGHTNESS] = enabled }
     }
-
     override suspend fun setVideoAutoplay(enabled: Boolean) {
         dataStore.edit { it[Keys.VIDEO_AUTOPLAY] = enabled }
     }
-
     override suspend fun setUiMode(mode: com.irah.galleria.domain.model.UiMode) {
         dataStore.edit { it[Keys.UI_MODE] = mode.name }
     }
-
     override suspend fun setTrashEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.TRASH_ENABLED] = enabled }
     }

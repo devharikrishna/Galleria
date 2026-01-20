@@ -1,5 +1,4 @@
 package com.irah.galleria.ui
-
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -38,9 +37,7 @@ import com.irah.galleria.ui.gallery.GalleryScreen
 import com.irah.galleria.ui.mediaviewer.MediaViewerScreen
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.settings.SettingsScreen
-
 val LocalBottomBarVisibility = compositionLocalOf { mutableStateOf(true) }
-
 sealed class BottomNavItem(
     val route: String,
     val title: String,
@@ -66,12 +63,10 @@ sealed class BottomNavItem(
         unselectedIcon = Icons.Outlined.Settings
     )
 }
-
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
     val bottomBarVisibility = remember { mutableStateOf(true) }
-    
     val items = listOf(
         BottomNavItem.Gallery,
         BottomNavItem.Album,
@@ -83,10 +78,7 @@ fun MainScreen() {
             bottomBar = {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                
-                // Only show bottom bar on main screens
                 val isMainScreen = items.any { it.route == currentDestination?.route }
-                
                 AnimatedVisibility(
                     visible = isMainScreen && bottomBarVisibility.value,
                     enter = slideInVertically { it } + expandVertically(),
@@ -177,7 +169,6 @@ fun MainScreen() {
                 ) {
                     AlbumDetailScreen(navController = navController)
                 }
-
                 composable(
                     route = Screen.MediaViewer.routeWithArgs,
                     arguments = Screen.MediaViewer.arguments

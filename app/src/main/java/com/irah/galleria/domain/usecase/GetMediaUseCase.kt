@@ -1,5 +1,4 @@
 package com.irah.galleria.domain.usecase
-
 import com.irah.galleria.domain.model.Media
 import com.irah.galleria.domain.repository.MediaRepository
 import com.irah.galleria.domain.util.MediaOrder
@@ -7,11 +6,9 @@ import com.irah.galleria.domain.util.OrderType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
-
 class GetMediaUseCase @Inject constructor(
     private val repository: MediaRepository
 ) {
-
     operator fun invoke(
         mediaOrder: MediaOrder = MediaOrder.Date(OrderType.Descending),
         filterType: FilterType = FilterType.All
@@ -22,7 +19,6 @@ class GetMediaUseCase @Inject constructor(
                 FilterType.Images -> mediaList.filter { !it.isVideo }
                 FilterType.Videos -> mediaList.filter { it.isVideo }
             }
-
             when(mediaOrder.orderType) {
                 is OrderType.Ascending -> {
                     when(mediaOrder) {
@@ -42,7 +38,6 @@ class GetMediaUseCase @Inject constructor(
         }
     }
 }
-
 enum class FilterType {
     All, Images, Videos
 }

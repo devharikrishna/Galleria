@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.settings
-
 import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.Image
@@ -85,7 +84,6 @@ import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.theme.GlassScaffold
 import com.irah.galleria.ui.theme.GlassSurface
 import kotlin.math.roundToInt
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -93,7 +91,6 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
-
     val bottomBarVisibility = LocalBottomBarVisibility.current
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
@@ -107,8 +104,6 @@ fun SettingsScreen(
             }
         }
     }
-
-
     GlassScaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
@@ -131,13 +126,9 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-
-
-            // --- Developed By ---
             item {
                 SettingsGroup(title = "Developed By", icon = Icons.Outlined.CodeOff) {
                     val context = androidx.compose.ui.platform.LocalContext.current
-                    
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -148,7 +139,6 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Profile Image
                             Image(
                                 painter = painterResource(id = R.drawable.developer_image),
                                 contentDescription = "Developer",
@@ -157,9 +147,7 @@ fun SettingsScreen(
                                     .size(64.dp)
                                     .clip(CircleShape)
                             )
-                            
                             Spacer(modifier = Modifier.width(16.dp))
-                            
                             Column {
                                 Text(
                                     text = getString(context, R.string.developer_name),
@@ -173,30 +161,22 @@ fun SettingsScreen(
                                 )
                             }
                         }
-
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(16.dp))
-
-                        // Social Icons Row
                         Row(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-
-                            // LinkedIn
                             SocialIcon(
                                 icon = ImageVector.vectorResource(id = R.drawable.ic_linkedin),
                                 onClick = {
-                                    // Assuming specific linkedIn URL or a search
                                     val intent = Intent(Intent.ACTION_VIEW, getString(context, R.string.linkedin_url).toUri())
                                     context.startActivity(intent)
                                 }
                             )
                             Spacer(modifier = Modifier.width(24.dp))
-
-                            // GitHub
                             SocialIcon(
                                 icon = ImageVector.vectorResource(id = R.drawable.ic_github),
                                 onClick = {
@@ -204,10 +184,7 @@ fun SettingsScreen(
                                     context.startActivity(intent)
                                 }
                             )
-
-
                             Spacer(modifier = Modifier.width(24.dp))
-                            // Email
                             SocialIcon(
                                 icon = Icons.Outlined.Email,
                                 onClick = {
@@ -219,17 +196,12 @@ fun SettingsScreen(
                                     }
                                 }
                             )
-
-
                         }
                     }
                 }
             }
-
-            // --- Appearance ---
             item {
                 SettingsGroup(title = "Appearance", icon = Icons.Outlined.Palette) {
-                    // Theme Mode
                     Text(
                         "Theme",
                         style = MaterialTheme.typography.labelLarge,
@@ -261,7 +233,6 @@ fun SettingsScreen(
                             onClick = { viewModel.setThemeMode(ThemeMode.DARK) }
                         )
                     }
-                    // Theme Mode
                     Text(
                         "UI Mode",
                         style = MaterialTheme.typography.labelLarge,
@@ -288,9 +259,6 @@ fun SettingsScreen(
                             onClick = { viewModel.setUiMode(UiMode.LIQUID_GLASS) }
                         )
                     }
-
-
-                    // Dynamic Color
                     SettingsSwitch(
                         title = "Dynamic Color",
                         subtitle = "Match system colors (Android 12+)",
@@ -298,7 +266,6 @@ fun SettingsScreen(
                         checked = settings.useDynamicColor,
                         onCheckedChange = { viewModel.setUseDynamicColor(it) }
                     )
-
                     if (!settings.useDynamicColor) {
                         SettingsColorPicker(
                             selectedColor = settings.accentColor,
@@ -307,20 +274,17 @@ fun SettingsScreen(
                     }
                 }
             }
-
-            // --- Gallery View ---
             item {
                 SettingsGroup(title = "Gallery View", icon = Icons.Outlined.GridView) {
                     SettingsSwitch(
                         title = "Staggered Layout",
                         subtitle = "Use masonry style grid",
-                        icon = Icons.Outlined.DashboardCustomize, // Or ViewQuilt
+                        icon = Icons.Outlined.DashboardCustomize,  
                         checked = settings.galleryViewType == GalleryViewType.STAGGERED,
                         onCheckedChange = {
                             viewModel.setGalleryViewType(if (it) GalleryViewType.STAGGERED else GalleryViewType.GRID)
                         }
                     )
-
                     SettingsSlider(
                         title = "Items per Row",
                         value = settings.galleryGridCount.toFloat(),
@@ -329,19 +293,16 @@ fun SettingsScreen(
                         icon = Icons.Outlined.GridOn,
                         onValueChange = { viewModel.setGalleryGridCount(it.roundToInt()) }
                     )
-
                     SettingsSlider(
                         title = "Corner Radius",
                         value = settings.galleryCornerRadius.toFloat(),
                         range = 0f..32f,
-                        steps = 0, // Continuous
+                        steps = 0,  
                         icon = Icons.Outlined.RoundedCorner,
                         onValueChange = { viewModel.setGalleryCornerRadius(it.roundToInt()) }
                     )
                 }
             }
-
-            // --- Albums List ---
             item {
                 SettingsGroup(title = "Albums List", icon = Icons.Outlined.PhotoAlbum) {
                     SettingsSlider(
@@ -352,7 +313,6 @@ fun SettingsScreen(
                         icon = Icons.Outlined.GridOn,
                         onValueChange = { viewModel.setAlbumGridCount(it.roundToInt()) }
                     )
-
                     SettingsSlider(
                         title = "Corner Radius",
                         value = settings.albumCornerRadius.toFloat(),
@@ -361,7 +321,6 @@ fun SettingsScreen(
                         icon = Icons.Outlined.RoundedCorner,
                         onValueChange = { viewModel.setAlbumCornerRadius(it.roundToInt()) }
                     )
-
                     SettingsSwitch(
                         title = "Show Media Count",
                         subtitle = "Display count on album cards",
@@ -371,8 +330,6 @@ fun SettingsScreen(
                     )
                 }
             }
-
-            // --- Album Content ---
             item {
                  SettingsGroup(title = "Album Content", icon = Icons.Outlined.DashboardCustomize) {
                     SettingsSwitch(
@@ -384,7 +341,6 @@ fun SettingsScreen(
                             viewModel.setAlbumDetailViewType(if (it) GalleryViewType.STAGGERED else GalleryViewType.GRID)
                         }
                     )
-
                     SettingsSlider(
                         title = "Items per Row",
                         value = settings.albumDetailGridCount.toFloat(),
@@ -393,7 +349,6 @@ fun SettingsScreen(
                         icon = Icons.Outlined.GridOn,
                         onValueChange = { viewModel.setAlbumDetailGridCount(it.roundToInt()) }
                     )
-
                     SettingsSlider(
                         title = "Corner Radius",
                         value = settings.albumDetailCornerRadius.toFloat(),
@@ -404,11 +359,8 @@ fun SettingsScreen(
                     )
                  }
             }
-
-            // --- Media & Playback ---
             item {
                 SettingsGroup(title = "Playback & Media", icon = Icons.Outlined.PlayCircle) {
-
                     SettingsSwitch(
                         title = "Max Brightness",
                         subtitle = "Force max brightness in viewer",
@@ -418,18 +370,15 @@ fun SettingsScreen(
                     )
                 }
             }
-
-            // --- Data & About ---
             item {
                 SettingsGroup(title = "Data Management", icon = Icons.Outlined.Storage) {
                     SettingsSwitch(
                         title = "Enable Recycle Bin",
                         subtitle = "Move items to bin before permanent deletion",
-                        icon = Icons.Default.Restore, // Using Restore icon to signify safety
+                        icon = Icons.Default.Restore,  
                         checked = settings.trashEnabled,
                         onCheckedChange = { viewModel.setTrashEnabled(it) }
                     )
-
                     SettingsItem(
                         title = "Open Recycle Bin",
                         subtitle = "Manage deleted items",
@@ -438,14 +387,9 @@ fun SettingsScreen(
                     )
                 }
             }
-
         }
     }
 }
-
-
-// --- Components ---
-
 @Composable
 fun SettingsGroup(
     title: String,
@@ -453,7 +397,6 @@ fun SettingsGroup(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column {
-
         Spacer(modifier = Modifier.height(10.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -473,15 +416,12 @@ fun SettingsGroup(
                 fontWeight = FontWeight.Bold
             )
         }
-
-
-
         GlassSurface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp, 
-            border = false // Or true if desired
+            border = false  
         ) {
             Column(modifier = Modifier.padding(vertical = 12.dp)) {
                 content()
@@ -489,8 +429,6 @@ fun SettingsGroup(
         }
     }
 }
-
-
 @Composable
 fun SettingsSwitch(
     title: String,
@@ -517,7 +455,6 @@ fun SettingsSwitch(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
-
 @Composable
 fun SettingsSlider(
     title: String,
@@ -548,7 +485,6 @@ fun SettingsSlider(
         )
     }
 }
-
 @Composable
 fun SettingsItem(
     title: String,
@@ -574,7 +510,6 @@ fun SettingsItem(
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
     }
 }
-
 @Composable
 fun ThemeChip(
     selected: Boolean,
@@ -601,7 +536,6 @@ fun ThemeChip(
         modifier = Modifier.height(40.dp)
     )
 }
-
 @Composable
 fun SettingsColorPicker(
     selectedColor: Long,
@@ -614,11 +548,11 @@ fun SettingsColorPicker(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             val colors = listOf(
-                0xFF304FFEL, // Royal Indigo
-                0xFFC51162L, // Magenta Rose
-                0xFF009688L, // Deep Teal
-                0xFFFF6D00L, // Blaze Orange
-                0xFF455A64L  // Midnight Slate
+                0xFF304FFEL,  
+                0xFFC51162L,  
+                0xFF009688L,  
+                0xFFFF6D00L,  
+                0xFF455A64L   
             )
             colors.forEach { colorVal ->
                 val isSelected = selectedColor == colorVal

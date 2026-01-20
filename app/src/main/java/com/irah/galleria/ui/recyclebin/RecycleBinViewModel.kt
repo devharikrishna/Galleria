@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.recyclebin
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.irah.galleria.domain.model.Media
@@ -10,14 +9,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 data class RecycleBinState(
     val media: List<Media> = emptyList(),
     val isLoading: Boolean = false,
     val selectedMediaIds: Set<Long> = emptySet(),
     val isSelectionMode: Boolean = false
 )
-
 sealed class RecycleBinEvent {
     data class ToggleSelection(val mediaId: Long): RecycleBinEvent()
     data class UpdateSelection(val selectedIds: Set<Long>): RecycleBinEvent()
@@ -26,19 +23,15 @@ sealed class RecycleBinEvent {
     object DeleteSelectedForever: RecycleBinEvent()
     object EmptyBin: RecycleBinEvent()
 }
-
 @HiltViewModel
 class RecycleBinViewModel @Inject constructor(
     private val repository: MediaRepository
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(RecycleBinState())
     val state: StateFlow<RecycleBinState> = _state.asStateFlow()
-
     init {
         loadTrashedMedia()
     }
-
     private fun loadTrashedMedia() {
         viewModelScope.launch {
             repository.getTrashedMedia().collect { mediaList ->
@@ -46,7 +39,6 @@ class RecycleBinViewModel @Inject constructor(
             }
         }
     }
-
     fun onEvent(event: RecycleBinEvent) {
         when(event) {
             is RecycleBinEvent.ToggleSelection -> {
@@ -71,17 +63,13 @@ class RecycleBinViewModel @Inject constructor(
                 )
             }
             RecycleBinEvent.RestoreSelected -> {
-                // Handled by UI invocation since it needs intent sender
             }
             RecycleBinEvent.DeleteSelectedForever -> {
-                // Handled by UI invocation since it needs intent sender
             }
             RecycleBinEvent.EmptyBin -> {
-                 // Handled by UI invocation
             }
         }
     }
-    
     fun restoreSelected(onIntentSender: (android.content.IntentSender) -> Unit) {
         viewModelScope.launch {
             val selected = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
@@ -93,7 +81,6 @@ class RecycleBinViewModel @Inject constructor(
             }
         }
     }
-
     fun deleteForever(onIntentSender: (android.content.IntentSender) -> Unit) {
         viewModelScope.launch {
             val selected = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
@@ -105,7 +92,6 @@ class RecycleBinViewModel @Inject constructor(
             }
         }
     }
-
     fun emptyBin(onIntentSender: (android.content.IntentSender) -> Unit) {
         viewModelScope.launch {
             val allTrashed = _state.value.media

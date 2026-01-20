@@ -1,13 +1,10 @@
 package com.irah.galleria.domain.repository
-
 import com.irah.galleria.domain.model.AppSettings
 import com.irah.galleria.domain.model.GalleryViewType
 import com.irah.galleria.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
-
 interface SettingsRepository {
     val settings: Flow<AppSettings>
-    
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setUiMode(mode: com.irah.galleria.domain.model.UiMode)
     suspend fun setGalleryViewType(type: GalleryViewType)

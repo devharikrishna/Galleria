@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.album
-
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,7 +13,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.irah.galleria.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.first
-
 data class AlbumDetailState(
     val media: List<Media> = emptyList(),
     val albumName: String = "",
@@ -22,26 +20,20 @@ data class AlbumDetailState(
     val isSelectionMode: Boolean = false,
     val selectedMediaIds: Set<Long> = emptySet()
 )
-
-
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
     private val repository: MediaRepository,
     private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(AlbumDetailState())
     val state: StateFlow<AlbumDetailState> = _state.asStateFlow()
-
     private val albumId: Long = savedStateHandle[Screen.AlbumDetail.ALBUM_ID_ARG] ?: -1L
     private val albumName: String = savedStateHandle[Screen.AlbumDetail.ALBUM_NAME_ARG] ?: "Album"
-
     init {
         _state.value = _state.value.copy(albumName = albumName)
         loadMedia()
     }
-
     private fun loadMedia() {
         viewModelScope.launch {
             if (albumId != -1L) {
@@ -51,7 +43,6 @@ class AlbumDetailViewModel @Inject constructor(
             }
         }
     }
-
     fun onEvent(event: AlbumDetailEvent) {
         when(event) {
             is AlbumDetailEvent.ToggleSelection -> {
@@ -80,12 +71,10 @@ class AlbumDetailViewModel @Inject constructor(
             }
         }
     }
-    
     fun deleteSelectedMedia(intentSenderLauncher: (android.content.IntentSender) -> Unit) {
         viewModelScope.launch {
             val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
             val intentSender = deleteMediaUseCase(selectedMedia)
-
             if (intentSender != null) {
                 intentSenderLauncher(intentSender)
             } else {
@@ -93,7 +82,6 @@ class AlbumDetailViewModel @Inject constructor(
             }
         }
     }
-
     fun moveSelectedMedia(targetPath: String, intentSenderLauncher: (android.content.IntentSender) -> Unit) {
         viewModelScope.launch {
              val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
@@ -105,7 +93,6 @@ class AlbumDetailViewModel @Inject constructor(
              }
         }
     }
-
     fun copySelectedMedia(targetPath: String) {
         viewModelScope.launch {
             val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
@@ -113,16 +100,13 @@ class AlbumDetailViewModel @Inject constructor(
             onEvent(AlbumDetailEvent.ClearSelection)
         }
     }
-
     fun shareSelectedMedia(context: android.content.Context) {
         viewModelScope.launch {
              val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
              if (selectedMedia.isEmpty()) return@launch
-
              val uris = ArrayList(selectedMedia.map { it.uri.let { uriString ->
                  android.net.Uri.parse(uriString)
              } })
-
              val shareIntent = android.content.Intent().apply {
                  if (uris.size == 1) {
                      action = android.content.Intent.ACTION_SEND
@@ -138,10 +122,8 @@ class AlbumDetailViewModel @Inject constructor(
              context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
         }
     }
-
     val albums = repository.getAlbums()
 }
-
 sealed class AlbumDetailEvent {
     data class ToggleSelection(val mediaId: Long) : AlbumDetailEvent()
     data class UpdateSelection(val selectedIds: Set<Long>) : AlbumDetailEvent()

@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.common
-
 import android.net.Uri
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -77,7 +76,6 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.sin
-
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
@@ -97,36 +95,27 @@ fun VideoPlayer(
             playWhenReady = true
         }
     }
-
     var isPlaying by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var playbackState by remember { mutableIntStateOf(Player.STATE_IDLE) }
-    
-    // Speed Control
     var speed by remember { mutableFloatStateOf(1f) }
     var showSpeedMenu by remember { mutableStateOf(false) }
-    
-    // Audio Control
     var isMuted by remember { mutableStateOf(false) }
-
-    // Smooth Progress for UI
     val animatedProgress by animateFloatAsState(
         targetValue = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
         animationSpec = tween(durationMillis = 500, easing = LinearEasing),
         label = "Progress"
     )
-
     LaunchedEffect(Unit) {
         while(true) {
             currentPosition = exoPlayer.currentPosition
             duration = exoPlayer.duration.coerceAtLeast(0L)
             isPlaying = exoPlayer.isPlaying
             playbackState = exoPlayer.playbackState
-            delay(200) // Faster polling for smoother updates (UI interpolation handles the rest)
+            delay(200)  
         }
     }
-
     DisposableEffect(Unit) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
@@ -145,16 +134,12 @@ fun VideoPlayer(
             exoPlayer.release()
         }
     }
-    
     LaunchedEffect(speed) {
         exoPlayer.playbackParameters = PlaybackParameters(speed)
     }
-    
     LaunchedEffect(isMuted) {
         exoPlayer.volume = if (isMuted) 0f else 1f
     }
-
-    // Lifecycle Management
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -169,8 +154,6 @@ fun VideoPlayer(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    
-    // Play/Pause based on Selection (Swipe)
     LaunchedEffect(isSelected) {
         if (isSelected) {
             exoPlayer.play()
@@ -178,15 +161,12 @@ fun VideoPlayer(
             exoPlayer.pause()
         }
     }
-
-    // Auto-hide Controls
     LaunchedEffect(controllerVisible, isPlaying) {
         if (controllerVisible && isPlaying) {
             delay(3000)
             onControllerVisibilityChanged(false)
         }
     }
-
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -211,7 +191,6 @@ fun VideoPlayer(
             },
             modifier = Modifier.fillMaxSize()
         )
-
         AnimatedVisibility(
             visible = controllerVisible,
             enter = fadeIn(),
@@ -223,15 +202,13 @@ fun VideoPlayer(
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.4f))
             ) {
-                // Bottom Controls Container
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
-                        .padding(bottom = 80.dp) // Lift up to avoid system bars/other buttons
+                        .padding(bottom = 80.dp)  
                 ) {
-                    // Time Labels
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -239,8 +216,6 @@ fun VideoPlayer(
                         Text(formatDuration(currentPosition), color = Color.White, style = MaterialTheme.typography.labelSmall)
                         Text(formatDuration(duration), color = Color.White, style = MaterialTheme.typography.labelSmall)
                     }
-
-                    // Wavy Progress Bar
                     WavyProgressIndicator(
                         progress = animatedProgress,
                         isPlaying = isPlaying,
@@ -250,16 +225,12 @@ fun VideoPlayer(
                             currentPosition = seekPos
                         }
                     )
-
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Main Controls Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly, // Distribute evenly
+                        horizontalArrangement = Arrangement.SpaceEvenly,  
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 1. Speed
                         Box {
                             IconButton(onClick = { showSpeedMenu = true }) {
                                 Icon(Icons.Default.Speed, "Speed", tint = Color.White)
@@ -279,13 +250,9 @@ fun VideoPlayer(
                                 }
                             }
                         }
-
-                        // 2. Rewind
                         IconButton(onClick = { exoPlayer.seekBack() }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Default.KeyboardDoubleArrowLeft, "Rewind", tint = Color.White, modifier = Modifier.size(32.dp))
                         }
-
-                        // 3. Play/Pause
                         Box(
                             modifier = Modifier
                                 .size(72.dp)
@@ -309,13 +276,9 @@ fun VideoPlayer(
                                 modifier = Modifier.size(48.dp)
                             )
                         }
-
-                        // 4. Forward
                         IconButton(onClick = { exoPlayer.seekForward() }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Default.KeyboardDoubleArrowRight, "Forward", tint = Color.White, modifier = Modifier.size(32.dp))
                         }
-                        
-                        // 5. Mute
                         IconButton(onClick = { isMuted = !isMuted }) {
                             Icon(
                                 if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
@@ -324,21 +287,18 @@ fun VideoPlayer(
                             )
                         }
                     }
-
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
     }
 }
-
 @Composable
 fun WavyProgressIndicator(
     progress: Float,
     isPlaying: Boolean,
     onSeek: (Float) -> Unit
 ) {
-    // Infinite transition for wave phase (ripple effect)
     val infiniteTransition = rememberInfiniteTransition(label = "WaveAnimation")
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -349,10 +309,7 @@ fun WavyProgressIndicator(
         ),
         label = "Phase"
     )
-    
-    // Only animate phase if playing
     val currentPhase = if (isPlaying) phase else 0f
-    
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
@@ -371,16 +328,11 @@ fun WavyProgressIndicator(
     ) {
         val midY = size.height / 2
         val amplitude = 6.dp.toPx()
-        val frequency = 2 * Math.PI / 50.dp.toPx() // One wave every 50dp
-        
-        // Draw Track (Inactive)
+        val frequency = 2 * Math.PI / 50.dp.toPx()  
         val trackPath = Path().apply {
             moveTo(0f, midY)
             var x = 0f
             while (x <= size.width) {
-                // Shift phase slightly for dynamic look or keep static? User asked for buttery smooth.
-                // Let's animate inactive track too for cool effect? OR just static.
-                // Let's keep inactive static or slow shift.
                 val y = midY + amplitude * sin((x * frequency + currentPhase).toFloat())
                 if (x == 0f) moveTo(x, y) else lineTo(x, y)
                 x += 2
@@ -391,15 +343,12 @@ fun WavyProgressIndicator(
             color = Color.White.copy(alpha = 0.3f),
             style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
         )
-
-        // Draw Progress (Active)
         val progressX = progress * size.width
-        
         val activePath = Path().apply {
             var x = 0f
             var first = true
             while (x <= progressX) {
-                 val y = midY + amplitude * sin((x * frequency + currentPhase).toFloat()) // Match phase
+                 val y = midY + amplitude * sin((x * frequency + currentPhase).toFloat())  
                  if (first) {
                      moveTo(x, y)
                      first = false
@@ -409,15 +358,11 @@ fun WavyProgressIndicator(
                  x += 2
             }
         }
-        
         drawPath(
             path = activePath,
             color = Color.White,
             style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
         )
-        
-        // Draw Knob
-        // Knob position calculates Y based on sine wave at current X
         val knobY = midY + amplitude * sin((progressX * frequency + currentPhase).toFloat())
         drawCircle(
             color = Color.White,
@@ -426,7 +371,6 @@ fun WavyProgressIndicator(
         )
     }
 }
-
 private fun formatDuration(millis: Long): String {
     val totalSeconds = millis / 1000
     val minutes = totalSeconds / 60

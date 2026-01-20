@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.common
-
 import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.irah.galleria.ui.theme.GlassScaffold
-
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun PermissionWrapper(
@@ -45,22 +43,16 @@ fun PermissionWrapper(
             android.Manifest.permission.READ_EXTERNAL_STORAGE
         )
     }
-
     val permissionState = rememberMultiplePermissionsState(permissions)
-
     LaunchedEffect(Unit) {
         if (!permissionState.allPermissionsGranted) {
-            //permissionState.launchMultiplePermissionRequest()
         }
     }
-
     val hasAccess = permissionState.allPermissionsGranted || 
             (Build.VERSION.SDK_INT >= 34 && permissionState.permissions.any { it.permission == android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED && it.status.isGranted })
-
     if (hasAccess) {
         content()
     } else {
-
         GlassScaffold(
             modifier = Modifier){
             Box(
@@ -87,6 +79,5 @@ fun PermissionWrapper(
                 }
             }
         }
-
     }
 }

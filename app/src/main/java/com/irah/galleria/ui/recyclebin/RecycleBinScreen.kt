@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.recyclebin
-
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -30,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.irah.galleria.ui.gallery.components.MediaGridItem
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecycleBinScreen(
@@ -38,7 +36,6 @@ fun RecycleBinScreen(
     viewModel: RecycleBinViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-
     val actionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -46,33 +43,27 @@ fun RecycleBinScreen(
              viewModel.onEvent(RecycleBinEvent.ClearSelection)
         }
     }
-    
     val performRestore = {
         viewModel.restoreSelected { intentSender ->
             actionLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
         }
     }
-    
     val performDeleteForever: () -> Unit = {
         viewModel.deleteForever { intentSender ->
             actionLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
         }
     }
-    
     val performEmptyBin: () -> Unit = {
         viewModel.emptyBin { intentSender ->
             actionLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
         }
     }
-
     androidx.activity.compose.BackHandler(enabled = state.isSelectionMode) {
         viewModel.onEvent(RecycleBinEvent.ClearSelection)
     }
-
     var showEmptyBinDialog by remember { mutableStateOf(false) }
     var showRestoreDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-
     if (showEmptyBinDialog) {
         AlertDialog(
             onDismissRequest = { showEmptyBinDialog = false },
@@ -93,7 +84,6 @@ fun RecycleBinScreen(
             }
         )
     }
-
     if (showRestoreDialog) {
         AlertDialog(
             onDismissRequest = { showRestoreDialog = false },
@@ -114,7 +104,6 @@ fun RecycleBinScreen(
             }
         )
     }
-
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -135,7 +124,6 @@ fun RecycleBinScreen(
             }
         )
     }
-
     com.irah.galleria.ui.theme.GlassScaffold(
         topBar = {
             val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
@@ -194,7 +182,6 @@ fun RecycleBinScreen(
             } else {
                 val mediaIds = remember(state.media) { state.media.map { it.id } }
                 val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-
                 com.irah.galleria.ui.gallery.components.DragSelectReceiver(
                     items = mediaIds,
                     selectedIds = state.selectedMediaIds,
@@ -205,7 +192,6 @@ fun RecycleBinScreen(
                         gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
                             val itemOffset = item.offset
                             val itemSize = item.size
-                            // Add buffer
                             offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
                             offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
                         }?.index

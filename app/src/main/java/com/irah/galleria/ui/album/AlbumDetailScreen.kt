@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.album
-
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -47,7 +46,6 @@ import com.irah.galleria.ui.gallery.components.AlbumSelectionSheet
 import com.irah.galleria.ui.gallery.components.MediaGridItem
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.settings.SettingsViewModel
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumDetailScreen(
@@ -57,9 +55,7 @@ fun AlbumDetailScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
-
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -75,7 +71,6 @@ fun AlbumDetailScreen(
             pendingAction = null
         }
     }
-    
     val performDelete = {
         viewModel.deleteSelectedMedia { intentSender ->
             if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
@@ -92,21 +87,15 @@ fun AlbumDetailScreen(
             )
         }
     }
-    
     var showAlbumSelectionSheet by remember { mutableStateOf(false) }
     var isCopyOperation by remember { mutableStateOf(false) }
-
     var showDeleteDialog by remember { mutableStateOf(false) }
-    
     var showCreateAlbumDialog by remember { mutableStateOf(false) }
     var newAlbumName by remember { mutableStateOf("") }
-
     val albums by viewModel.albums.collectAsState(initial = emptyList())
-
     androidx.activity.compose.BackHandler(enabled = state.isSelectionMode) {
         viewModel.onEvent(AlbumDetailEvent.ClearSelection)
     }
-
     val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
     com.irah.galleria.ui.theme.GlassScaffold(
         topBar = {
@@ -115,7 +104,6 @@ fun AlbumDetailScreen(
             } else {
                  androidx.compose.material3.TopAppBarDefaults.topAppBarColors()
             }
-
             if (state.isSelectionMode) {
                 TopAppBar(
                     title = { Text("${state.selectedMediaIds.size} Selected") },
@@ -166,8 +154,6 @@ fun AlbumDetailScreen(
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-             // --- DIALOGS & SHEETS ---
-             
             if (showDeleteDialog) {
                 AlertDialog(
                     onDismissRequest = { showDeleteDialog = false },
@@ -192,7 +178,6 @@ fun AlbumDetailScreen(
                     }
                 )
             }
-
             if (showAlbumSelectionSheet) {
                 AlbumSelectionSheet(
                     albums = albums,
@@ -221,7 +206,6 @@ fun AlbumDetailScreen(
                     isCopyOperation = isCopyOperation
                 )
             }
-            
             if (showCreateAlbumDialog) {
                 AlertDialog(
                     onDismissRequest = { showCreateAlbumDialog = false },
@@ -263,12 +247,9 @@ fun AlbumDetailScreen(
                     }
                 )
             }
-            
             val mediaIds = remember(state.media) { state.media.map { it.id } }
-
             if (settings.albumDetailViewType == com.irah.galleria.domain.model.GalleryViewType.GRID) {
                 val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-                
                 com.irah.galleria.ui.gallery.components.DragSelectReceiver(
                     items = mediaIds,
                     selectedIds = state.selectedMediaIds,
@@ -279,7 +260,6 @@ fun AlbumDetailScreen(
                         gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
                             val itemOffset = item.offset
                             val itemSize = item.size
-                            // Add buffer
                             offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
                             offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
                         }?.index
@@ -326,9 +306,7 @@ fun AlbumDetailScreen(
                     }
                 }
             } else {
-                // Staggered Layout
                 val staggeredGridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
-                
                 com.irah.galleria.ui.gallery.components.DragSelectReceiver(
                     items = mediaIds,
                     selectedIds = state.selectedMediaIds,
@@ -339,7 +317,6 @@ fun AlbumDetailScreen(
                         staggeredGridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
                             val itemOffset = item.offset
                             val itemSize = item.size
-                            // Add buffer
                             offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
                             offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
                         }?.index

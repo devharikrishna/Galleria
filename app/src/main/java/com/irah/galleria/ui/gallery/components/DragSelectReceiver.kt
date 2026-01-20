@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.gallery.components
-
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
@@ -23,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-
 @Composable
 fun DragSelectReceiver(
     items: List<Long>,
@@ -41,15 +39,11 @@ fun DragSelectReceiver(
     val currentGetItemIndexAtPosition by rememberUpdatedState(getItemIndexAtPosition)
     val currentScrollBy by rememberUpdatedState(scrollBy)
     val currentViewportHeight by rememberUpdatedState(viewportHeight)
-    
     val hapticFeedback = LocalHapticFeedback.current
     val density = LocalDensity.current
-
     var initialSelection by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var dragStartItemIndex by remember { mutableStateOf<Int?>(null) }
     var currentDragPosition by remember { mutableStateOf<Offset?>(null) }
-    
-    // Auto-scroll logic
     LaunchedEffect(currentDragPosition) {
         val position = currentDragPosition ?: return@LaunchedEffect
         while (isActive) {
@@ -58,10 +52,8 @@ fun DragSelectReceiver(
                  delay(100)
                  continue
             }
-            
             val scrollThreshold = with(density) { 60.dp.toPx() }
             val scrollSpeed = 20f
-
             val couldScroll = if (position.y < scrollThreshold) {
                  currentScrollBy(-scrollSpeed)
             } else if (position.y > vHeight - scrollThreshold) {
@@ -69,7 +61,6 @@ fun DragSelectReceiver(
             } else {
                 0f
             }
-            
             if (couldScroll != 0f) {
                  updateSelection(
                      getItemIndexAtPosition = currentGetItemIndexAtPosition,
@@ -83,22 +74,15 @@ fun DragSelectReceiver(
             delay(10)
         }
     }
-
     val dragHandlerModifier = Modifier.pointerInput(Unit) {
         detectDragGesturesAfterLongPressStealing(
             onDragStart = { offset ->
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 val itemIndex = currentGetItemIndexAtPosition(offset)
-
                 if (itemIndex != null && itemIndex in currentItems.indices) {
                     dragStartItemIndex = itemIndex
                     initialSelection = currentSelectedIds
-                    
                     val startId = currentItems[itemIndex]
-                    // If starting new selection or toggling? 
-                    // To follow standard pattern: Add the initial item immediately.
-                    // If we want toggle behavior on start item, we can check logic.
-                    // For simply drag select: Ensure start item is selected.
                     if (startId !in initialSelection) {
                          onSelectionChange(initialSelection + startId)
                     }
@@ -129,10 +113,8 @@ fun DragSelectReceiver(
             }
         )
     }
-
    content(dragHandlerModifier)
 }
-
 private fun updateSelection(
     getItemIndexAtPosition: (Offset) -> Int?,
     items: List<Long>,
@@ -142,17 +124,12 @@ private fun updateSelection(
     onSelectionChange: (Set<Long>) -> Unit
 ) {
     if (dragStartItemIndex == null) return
-
     val currentItemIndex = getItemIndexAtPosition(currentDragPosition) ?: return
-
     val start = minOf(dragStartItemIndex, currentItemIndex)
     val end = maxOf(dragStartItemIndex, currentItemIndex)
-    
     val newSelection = items.subList(start, end + 1).toSet()
-    
     onSelectionChange(initialSelection + newSelection)
 }
-
 suspend fun PointerInputScope.detectDragGesturesAfterLongPressStealing(
     onDragStart: (Offset) -> Unit = { },
     onDragEnd: () -> Unit = { },
@@ -161,24 +138,14 @@ suspend fun PointerInputScope.detectDragGesturesAfterLongPressStealing(
 ) {
     awaitEachGesture {
         try {
-            // We wait for first down, allowing it to be already consumed by children (e.g. clickable)
             val down = awaitFirstDown(requireUnconsumed = false)
-            
-            // Wait for long press. This tracks the pointer ID.
-            // If the pointer moves beyond slop before timeout, it returns null (scroll/tap).
             val longPress = awaitLongPressOrCancellation(down.id)
-            
             if (longPress != null) {
-                // Long press happened!
-                // We shouldn't care if it's consumed or not, we are taking over.
-                
                 onDragStart(longPress.position)
-
-                // Drag loop
                 if (
                     drag(longPress.id) { change ->
                         val dragAmount = change.position - change.previousPosition
-                        change.consume() // Consume to prevent others from seeing it
+                        change.consume()  
                         onDrag(change, dragAmount)
                     }
                 ) {

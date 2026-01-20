@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.album
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.irah.galleria.domain.model.Album
@@ -14,25 +13,20 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 data class AlbumState(
     val albums: List<Album> = emptyList(),
     val isLoading: Boolean = false,
     val mediaOrder: MediaOrder = MediaOrder.Date(OrderType.Descending)
 )
-
 @HiltViewModel
 class AlbumViewModel @Inject constructor(
     private val getAlbumsUseCase: GetAlbumsUseCase
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(AlbumState())
     val state: StateFlow<AlbumState> = _state.asStateFlow()
-
     init {
         loadAlbums()
     }
-
     private fun loadAlbums() {
         viewModelScope.launch {
             getAlbumsUseCase(mediaOrder = _state.value.mediaOrder)

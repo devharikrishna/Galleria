@@ -1,7 +1,5 @@
 package com.irah.galleria.domain.model
-
 import androidx.compose.runtime.Immutable
-
 @Immutable
 data class Media(
     val id: Long,
@@ -12,7 +10,7 @@ data class Media(
     val mimeType: String,
     val timestamp: Long,
     val dateTaken: Long,
-    val duration: Long? = null, // For videos
+    val duration: Long? = null,  
     val width: Int = 0,
     val height: Int = 0,
     val bucketId: Long = 0,

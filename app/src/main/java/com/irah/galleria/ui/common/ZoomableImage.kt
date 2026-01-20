@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.common
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -24,7 +23,6 @@ import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEach
 import coil.compose.AsyncImagePainter
 import kotlin.math.abs
-
 @Composable
 fun ZoomableImage(
     painter: AsyncImagePainter,
@@ -34,11 +32,9 @@ fun ZoomableImage(
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.toFloat()
     val screenHeight = configuration.screenHeightDp.toFloat()
-
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -61,57 +57,39 @@ fun ZoomableImage(
                     var pan = Offset.Zero
                     var pastTouchSlop = false
                     val touchSlop = viewConfiguration.touchSlop
-
                     awaitFirstDown(requireUnconsumed = false)
-                    
                     do {
                         val event = awaitPointerEvent()
                         val canceled = event.changes.fastAny { it.isConsumed }
                         if (canceled) break
-
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
-
                         if (!pastTouchSlop) {
                             zoom *= zoomChange
                             pan += panChange
                             val centroidSize = event.calculateCentroidSize(useCurrent = false)
                             val zoomMotion = abs(1 - zoom) * centroidSize
                             val panMotion = pan.getDistance()
-
                             if (zoomMotion > touchSlop ||
                                 panMotion > touchSlop
                             ) {
                                 pastTouchSlop = true
                             }
                         }
-
                         if (pastTouchSlop) {
                             val isMultiTouch = event.changes.size > 1
-                            
-                            // Critical Logic:
-                            // If scale is 1f and it's NOT multi-touch, we do NOT consume the event.
-                            // This allows the parent Pager to see the drag.
-                            // If it IS multi-touch (pinch), we consume and zoom.
-                            // If scale > 1f, we consume and pan/zoom.
-                            
                             if (scale == 1f && !isMultiTouch) {
-                                // Do nothing, let parent handle (Pager Swipe)
                             } else {
-                                // Consuming the changes to prevent parent from seeing them
                                 event.changes.fastForEach { 
                                     if (it.positionChanged()) {
                                         it.consume()
                                     }
                                 }
-
                                 scale = (scale * zoomChange).coerceIn(1f, 5f)
-                                
                                 val extraWidth = (scale - 1) * screenWidth
                                 val extraHeight = (scale - 1) * screenHeight
                                 val maxX = extraWidth / 2
                                 val maxY = extraHeight / 2
-
                                 offset = Offset(
                                     x = (offset.x + panChange.x * scale).coerceIn(-maxX, maxX),
                                     y = (offset.y + panChange.y * scale).coerceIn(-maxY, maxY)

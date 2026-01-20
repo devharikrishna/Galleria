@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.album
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +24,6 @@ import com.irah.galleria.ui.album.components.AlbumGridItem
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.theme.GlassScaffold
 import com.irah.galleria.ui.theme.LocalUiMode
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumScreen(
@@ -35,7 +33,6 @@ fun AlbumScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
-
     val bottomBarVisibility = com.irah.galleria.ui.LocalBottomBarVisibility.current
     val nestedScrollConnection = androidx.compose.runtime.remember {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
@@ -49,7 +46,6 @@ fun AlbumScreen(
             }
         }
     }
-
     val uiMode = LocalUiMode.current
     GlassScaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
@@ -80,7 +76,7 @@ fun AlbumScreen(
                         top = 8.dp,
                         start = 8.dp,
                         end = 8.dp,
-                        bottom = innerPadding.calculateBottomPadding() + 80.dp // Ensure visibility
+                        bottom = innerPadding.calculateBottomPadding() + 80.dp  
                     ),
                 ) {
                     items(state.albums) { album ->

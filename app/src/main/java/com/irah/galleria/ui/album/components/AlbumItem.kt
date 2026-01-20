@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.album.components
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.irah.galleria.domain.model.Album
-
 @Composable
 fun AlbumGridItem(
     album: Album,
@@ -53,7 +51,6 @@ fun AlbumGridItem(
                 modifier = Modifier.fillMaxSize()
             )
         }
-        
         Text(
             text = album.name,
             style = MaterialTheme.typography.titleMedium,
