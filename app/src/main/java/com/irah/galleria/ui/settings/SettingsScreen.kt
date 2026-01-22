@@ -95,10 +95,10 @@ fun SettingsScreen(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -5) {
-                    bottomBarVisibility.value = false
-                } else if (available.y > 5) {
-                    bottomBarVisibility.value = true
+                if (available.y < -15) {
+                    if (bottomBarVisibility.value) bottomBarVisibility.value = false
+                } else if (available.y > 15) {
+                    if (!bottomBarVisibility.value) bottomBarVisibility.value = true
                 }
                 return super.onPreScroll(available, source)
             }

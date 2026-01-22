@@ -136,6 +136,9 @@ fun MediaViewerScreen(
                     )
                 }
             }
+            val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+            val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            
             AnimatedVisibility(
                 visible = showControls,
                 enter = fadeIn(),
@@ -145,7 +148,11 @@ fun MediaViewerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Transparent)  
+                        .background(
+                             androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                             )
+                        )
                         .systemBarsPadding()
                         .padding(horizontal = 8.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -154,45 +161,79 @@ fun MediaViewerScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
+                    
+                    if (isLandscape) {
+                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { showInfoSheet = true }) {
+                                Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
+                            }
+                            IconButton(onClick = { 
+                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = currentMedia.mimeType
+                                    putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
+                            }) {
+                                Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                            }
+                            IconButton(onClick = {
+                                viewModel.deleteMedia(currentMedia) { intentSender ->
+                                    deleteLauncher.launch(
+                                        IntentSenderRequest.Builder(intentSender).build()
+                                    )
+                                }
+                            }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                            }
+                         }
+                    }
                 }
             }
-            AnimatedVisibility(
-                visible = showControls,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.Transparent)  
-                        .systemBarsPadding()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+
+            if (!isLandscape) {
+                AnimatedVisibility(
+                    visible = showControls,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
-                    IconButton(onClick = { 
-                        showInfoSheet = true 
-                    }) {
-                        Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
-                    }
-                    IconButton(onClick = { 
-                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                            type = currentMedia.mimeType
-                            putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
-                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
-                    }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
-                    }
-                    IconButton(onClick = {
-                        viewModel.deleteMedia(currentMedia) { intentSender ->
-                            deleteLauncher.launch(
-                                IntentSenderRequest.Builder(intentSender).build()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                                )
                             )
+                            .systemBarsPadding()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        IconButton(onClick = { 
+                            showInfoSheet = true 
+                        }) {
+                            Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
                         }
-                    }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                        IconButton(onClick = { 
+                            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = currentMedia.mimeType
+                                putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                        }
+                        IconButton(onClick = {
+                            viewModel.deleteMedia(currentMedia) { intentSender ->
+                                deleteLauncher.launch(
+                                    IntentSenderRequest.Builder(intentSender).build()
+                                )
+                            }
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                        }
                     }
                 }
             }

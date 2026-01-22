@@ -112,34 +112,30 @@ fun AnimatedLiquidBackground(isDark: Boolean) {
         drawRect(brush = Brush.verticalGradient(baseColors))
         val blobColors = if (isDark) {
             listOf(
-                Color(0xFF4F46E5).copy(alpha = 0.5f),  
-                Color(0xFFEC4899).copy(alpha = 0.4f),  
-                Color(0xFF06B6D4).copy(alpha = 0.4f),  
-                Color(0xFF8B5CF6).copy(alpha = 0.5f),  
-                Color(0xFF10B981).copy(alpha = 0.3f)   
+                Color(0xFF4F46E5).copy(alpha = 0.5f),
+                Color(0xFFEC4899).copy(alpha = 0.4f),
+                Color(0xFF06B6D4).copy(alpha = 0.4f)
             )
         } else {
              listOf(
-                Color(0xFFA5F3FC).copy(alpha = 0.7f),  
-                Color(0xFFFBCFE8).copy(alpha = 0.6f),  
-                Color(0xFFDDD6FE).copy(alpha = 0.7f),  
-                Color(0xFFBBF7D0).copy(alpha = 0.6f),  
-                Color(0xFFBAE6FD).copy(alpha = 0.7f)   
+                Color(0xFFA5F3FC).copy(alpha = 0.7f),
+                Color(0xFFFBCFE8).copy(alpha = 0.6f),
+                Color(0xFFDDD6FE).copy(alpha = 0.7f)
             )
         }
         drawCircle(
             brush = Brush.radialGradient(colors = listOf(blobColors[0], Color.Transparent)),
-            radius = w * 0.9f,  
+            radius = w * 0.9f,
             center = androidx.compose.ui.geometry.Offset(
-                x = w * -0.3f + (w * 1.6f * t1),  
-                y = h * -0.2f + (h * 1.4f * t2)   
+                x = w * -0.3f + (w * 1.6f * t1),
+                y = h * -0.2f + (h * 1.4f * t2)
             )
         )
         drawCircle(
             brush = Brush.radialGradient(colors = listOf(blobColors[1], Color.Transparent)),
             radius = w * 0.85f,
             center = androidx.compose.ui.geometry.Offset(
-                x = w * 1.3f - (w * 1.6f * t2), 
+                x = w * 1.3f - (w * 1.6f * t2),
                 y = h * 1.2f - (h * 1.4f * t3)
             )
         )
@@ -147,24 +143,8 @@ fun AnimatedLiquidBackground(isDark: Boolean) {
             brush = Brush.radialGradient(colors = listOf(blobColors[2], Color.Transparent)),
             radius = w * 0.8f,
             center = androidx.compose.ui.geometry.Offset(
-                x = w * -0.2f + (w * 1.5f * t3), 
+                x = w * -0.2f + (w * 1.5f * t3),
                 y = h * 1.2f - (h * 1.4f * t1)
-            )
-        )
-         drawCircle(
-            brush = Brush.radialGradient(colors = listOf(blobColors[3], Color.Transparent)),
-            radius = w * 0.85f,
-            center = androidx.compose.ui.geometry.Offset(
-                x = w * 1.2f - (w * 1.5f * t1), 
-                y = h * -0.2f + (h * 1.5f * t3)
-            )
-        )
-         drawCircle(
-            brush = Brush.radialGradient(colors = listOf(blobColors[4], Color.Transparent)),
-            radius = w * 1.0f,
-            center = androidx.compose.ui.geometry.Offset(
-                x = w * 0.5f + (w * 0.5f * (t2 - 0.5f)), 
-                y = h * 0.5f + (h * 0.5f * (t1 - 0.5f))
             )
         )
     }

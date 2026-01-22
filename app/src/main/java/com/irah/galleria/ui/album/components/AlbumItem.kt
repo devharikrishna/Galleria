@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -35,14 +36,18 @@ fun AlbumGridItem(
         Box(
             modifier = Modifier
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(cornerRadius.dp))
+                .graphicsLayer {
+                    shape = RoundedCornerShape(cornerRadius.dp)
+                    clip = true
+                }
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Image(
                 painter = rememberAsyncImagePainter(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(album.uri)
-                        .crossfade(true)
+                        .size(300)
+                        .crossfade(false)
                         .build()
                 ),
                 contentDescription = album.name,

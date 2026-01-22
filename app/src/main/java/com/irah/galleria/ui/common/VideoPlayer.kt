@@ -65,6 +65,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.width
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.MediaItem
@@ -197,65 +203,31 @@ fun VideoPlayer(
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
-            ) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 80.dp)  
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(formatDuration(currentPosition), color = Color.White, style = MaterialTheme.typography.labelSmall)
-                        Text(formatDuration(duration), color = Color.White, style = MaterialTheme.typography.labelSmall)
-                    }
-                    WavyProgressIndicator(
-                        progress = animatedProgress,
-                        isPlaying = isPlaying,
-                        onSeek = { fraction ->
-                            val seekPos = (fraction * duration).toLong()
-                            exoPlayer.seekTo(seekPos)
-                            currentPosition = seekPos
-                        }
+            val configuration = LocalConfiguration.current
+            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+            if (isLandscape) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .align(Alignment.TopCenter)
+                            .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)))
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,  
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box {
-                            IconButton(onClick = { showSpeedMenu = true }) {
-                                Icon(Icons.Default.Speed, "Speed", tint = Color.White)
-                            }
-                            DropdownMenu(
-                                expanded = showSpeedMenu,
-                                onDismissRequest = { showSpeedMenu = false }
-                            ) {
-                                listOf(0.5f, 1.0f, 1.5f, 2.0f).forEach { s ->
-                                    DropdownMenuItem(
-                                        text = { Text("${s}x") },
-                                        onClick = { 
-                                            speed = s
-                                            showSpeedMenu = false 
-                                        }
-                                    )
-                                }
-                            }
+                        IconButton(onClick = { exoPlayer.seekBack() }, modifier = Modifier.size(64.dp)) {
+                            Icon(Icons.Default.KeyboardDoubleArrowLeft, "Rewind", tint = Color.White, modifier = Modifier.size(48.dp))
                         }
-                        IconButton(onClick = { exoPlayer.seekBack() }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Default.KeyboardDoubleArrowLeft, "Rewind", tint = Color.White, modifier = Modifier.size(32.dp))
-                        }
+                        Spacer(modifier = Modifier.width(32.dp))
                         Box(
                             modifier = Modifier
-                                .size(72.dp)
+                                .size(80.dp)
                                 .background(Color.White.copy(alpha = 0.2f), CircleShape)
                                 .clickable {
                                     if (playbackState == Player.STATE_ENDED) {
@@ -273,21 +245,161 @@ fun VideoPlayer(
                                 imageVector = if (isPlaying && playbackState != Player.STATE_ENDED) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = "Play/Pause",
                                 tint = Color.White,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(56.dp)
                             )
                         }
-                        IconButton(onClick = { exoPlayer.seekForward() }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Default.KeyboardDoubleArrowRight, "Forward", tint = Color.White, modifier = Modifier.size(32.dp))
-                        }
-                        IconButton(onClick = { isMuted = !isMuted }) {
-                            Icon(
-                                if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                                "Audio", 
-                                tint = Color.White
-                            )
+                        Spacer(modifier = Modifier.width(32.dp))
+                        IconButton(onClick = { exoPlayer.seekForward() }, modifier = Modifier.size(64.dp)) {
+                            Icon(Icons.Default.KeyboardDoubleArrowRight, "Forward", tint = Color.White, modifier = Modifier.size(48.dp))
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))))
+                            .padding(horizontal = 24.dp, vertical = 24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box {
+                                IconButton(onClick = { showSpeedMenu = true }) {
+                                    Icon(Icons.Default.Speed, "Speed", tint = Color.White)
+                                }
+                                DropdownMenu(
+                                    expanded = showSpeedMenu,
+                                    onDismissRequest = { showSpeedMenu = false }
+                                ) {
+                                    listOf(0.5f, 1.0f, 1.5f, 2.0f).forEach { s ->
+                                        DropdownMenuItem(
+                                            text = { Text("${s}x") },
+                                            onClick = {
+                                                speed = s
+                                                showSpeedMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            IconButton(onClick = { isMuted = !isMuted }) {
+                                Icon(
+                                    if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                    "Audio",
+                                    tint = Color.White
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(formatDuration(currentPosition), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                            WavyProgressIndicator(
+                                progress = animatedProgress,
+                                isPlaying = isPlaying,
+                                onSeek = { fraction ->
+                                    val seekPos = (fraction * duration).toLong()
+                                    exoPlayer.seekTo(seekPos)
+                                    currentPosition = seekPos
+                                },
+                                modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
+                            )
+                            Text(formatDuration(duration), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f))
+                    ) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .padding(bottom = 80.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(formatDuration(currentPosition), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                            Text(formatDuration(duration), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                        }
+                        WavyProgressIndicator(
+                            progress = animatedProgress,
+                            isPlaying = isPlaying,
+                            onSeek = { fraction ->
+                                val seekPos = (fraction * duration).toLong()
+                                exoPlayer.seekTo(seekPos)
+                                currentPosition = seekPos
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                             Box {
+                                IconButton(onClick = { showSpeedMenu = true }) {
+                                    Icon(Icons.Default.Speed, "Speed", tint = Color.White)
+                                }
+                                DropdownMenu(
+                                    expanded = showSpeedMenu,
+                                    onDismissRequest = { showSpeedMenu = false }
+                                ) {
+                                    listOf(0.5f, 1.0f, 1.5f, 2.0f).forEach { s ->
+                                        DropdownMenuItem(
+                                            text = { Text("${s}x") },
+                                            onClick = { 
+                                                speed = s
+                                                showSpeedMenu = false 
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            IconButton(onClick = { exoPlayer.seekBack() }, modifier = Modifier.size(48.dp)) {
+                                Icon(Icons.Default.KeyboardDoubleArrowLeft, "Rewind", tint = Color.White, modifier = Modifier.size(32.dp))
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                                    .clickable {
+                                        if (playbackState == Player.STATE_ENDED) {
+                                            exoPlayer.seekTo(0)
+                                            exoPlayer.play()
+                                        } else if (isPlaying) {
+                                            exoPlayer.pause()
+                                        } else {
+                                            exoPlayer.play()
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isPlaying && playbackState != Player.STATE_ENDED) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = "Play/Pause",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                            IconButton(onClick = { exoPlayer.seekForward() }, modifier = Modifier.size(48.dp)) {
+                                Icon(Icons.Default.KeyboardDoubleArrowRight, "Forward", tint = Color.White, modifier = Modifier.size(32.dp))
+                            }
+                            IconButton(onClick = { isMuted = !isMuted }) {
+                                Icon(
+                                    if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                    "Audio", 
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
             }
         }
@@ -297,7 +409,8 @@ fun VideoPlayer(
 fun WavyProgressIndicator(
     progress: Float,
     isPlaying: Boolean,
-    onSeek: (Float) -> Unit
+    onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "WaveAnimation")
     val phase by infiniteTransition.animateFloat(
@@ -311,8 +424,7 @@ fun WavyProgressIndicator(
     )
     val currentPhase = if (isPlaying) phase else 0f
     Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(24.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->

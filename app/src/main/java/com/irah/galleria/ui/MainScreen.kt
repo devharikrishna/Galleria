@@ -13,8 +13,10 @@ import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +38,7 @@ import com.irah.galleria.ui.album.AlbumScreen
 import com.irah.galleria.ui.gallery.GalleryScreen
 import com.irah.galleria.ui.mediaviewer.MediaViewerScreen
 import com.irah.galleria.ui.navigation.Screen
+import com.irah.galleria.ui.recyclebin.RecycleBinScreen
 import com.irah.galleria.ui.settings.SettingsScreen
 val LocalBottomBarVisibility = compositionLocalOf { mutableStateOf(true) }
 sealed class BottomNavItem(
@@ -98,12 +101,12 @@ fun MainScreen() {
                                     },
                                     label = { Text(screen.title) },
                                     selected = selected,
-                                    colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                                        indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                        unselectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                        unselectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                        selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
-                                        selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+                                    colors = NavigationBarItemDefaults.colors(
+                                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSurface
                                     ),
                                     onClick = {
                                         navController.navigate(screen.route) {
@@ -161,7 +164,7 @@ fun MainScreen() {
                     SettingsScreen(navController = navController)
                 }
                 composable(Screen.RecycleBin.route) {
-                    com.irah.galleria.ui.recyclebin.RecycleBinScreen(navController = navController)
+                    RecycleBinScreen(navController = navController)
                 }
                 composable(
                     route = Screen.AlbumDetail.routeWithArgs,

@@ -36,10 +36,10 @@ fun AlbumScreen(
     val nestedScrollConnection = androidx.compose.runtime.remember {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
             override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                if (available.y < -5) {
-                    bottomBarVisibility.value = false
-                } else if (available.y > 5) {
-                    bottomBarVisibility.value = true
+                if (available.y < -15) {
+                    if (bottomBarVisibility.value) bottomBarVisibility.value = false
+                } else if (available.y > 15) {
+                    if (!bottomBarVisibility.value) bottomBarVisibility.value = true
                 }
                 return super.onPreScroll(available, source)
             }

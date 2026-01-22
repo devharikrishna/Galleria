@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -48,29 +49,28 @@ fun MediaGridItem(
     Box(
         modifier = containerModifier
             .padding(2.dp)
-            .clip(RoundedCornerShape(cornerRadius.dp))
+            .graphicsLayer {
+                shape = RoundedCornerShape(cornerRadius.dp)
+                clip = true
+            }
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
         val painter = rememberAsyncImagePainter(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(media.uri)
-                .size(300)
-                .crossfade(animationsEnabled)
+                .crossfade(false)
+                .allowHardware(true)
+                .allowRgb565(true)
+                .allowConversionToBitmap(true)
                 .build()
         )
-        if (painter.state is AsyncImagePainter.State.Loading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .shimmer(animationsEnabled)
-            )
-        }
+
         Image(
             painter = painter,
             contentDescription = media.name,
             contentScale = ContentScale.Crop, 
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().shimmer(animationsEnabled && painter.state is AsyncImagePainter.State.Loading)
         )
         if (isSelected) {
             Box(
@@ -83,7 +83,7 @@ fun MediaGridItem(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(30.dp)
                 )
             }
         }

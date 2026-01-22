@@ -83,11 +83,11 @@ fun FastScroller(
             animationSpec = tween(durationMillis = 300),
             label = "Thumb Alpha"
         )
-        LaunchedEffect(scrollProgress, isDragging) {
-            if (isDragging) {
+        val isScrolling = gridState?.isScrollInProgress == true || staggeredGridState?.isScrollInProgress == true
+        LaunchedEffect(isScrolling, isDragging) {
+            if (isScrolling || isDragging) {
                 isVisible = true
             } else {
-                isVisible = true
                 kotlinx.coroutines.delay(1500)
                 isVisible = false
             }

@@ -11,6 +11,10 @@ class GalleriaApp : Application(), ImageLoaderFactory {
             .components {
                 add(VideoFrameDecoder.Factory())
             }
+            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+            .allowHardware(true)
+            .allowRgb565(true)
             .crossfade(true)
             .build()
     }
