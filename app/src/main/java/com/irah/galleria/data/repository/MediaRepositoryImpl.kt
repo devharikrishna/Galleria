@@ -147,15 +147,33 @@ class MediaRepositoryImpl @Inject constructor(
             if (failedMoves.isNotEmpty()) {
                 return deleteForever(failedMoves)
             }
+            if (failedMoves.isNotEmpty()) {
+                return deleteForever(failedMoves)
+            }
+        } else {
+            // Legacy support for Android 9 and below (API < 29)
+            // Move = Copy + Delete
+            for (media in mediaList) {
+                try {
+                    val newUri = copyMedia(media, targetPath)
+                    if (newUri != null) {
+                        // If copy succeeded, delete the original
+                        deleteForever(listOf(media))
+                    } else {
+                         failedMoves.add(media)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    failedMoves.add(media)
+                }
+            }
         }
         return null
     }
     override suspend fun copyMedia(mediaList: List<Media>, targetPath: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            for (media in mediaList) {
-                if (!doesSearchResultExist(media.name, targetPath)) {
-                    copyMedia(media, targetPath)
-                }
+        for (media in mediaList) {
+            if (!doesSearchResultExist(media.name, targetPath)) {
+                copyMedia(media, targetPath)
             }
         }
     }
@@ -179,9 +197,19 @@ class MediaRepositoryImpl @Inject constructor(
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, media.name)
                 put(MediaStore.MediaColumns.MIME_TYPE, media.mimeType)
-                put(MediaStore.MediaColumns.RELATIVE_PATH, targetPath)
+                
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, targetPath)
                     put(MediaStore.MediaColumns.IS_PENDING, 1)  
+                } else {
+                     // For API < 29, we need to construct the full path
+                     // targetPath usually comes in as "Pictures/AlbumName"
+                     // We need to prepend the external storage directory
+                     val externalDir = android.os.Environment.getExternalStorageDirectory().absolutePath
+                     val finalPath = java.io.File(externalDir, "$targetPath/${media.name}")
+                     // Ensure parent directory exists (though insert might not strictly require it if MediaProvider handles it, safe to maintain structure)
+                     finalPath.parentFile?.mkdirs()
+                     put(MediaStore.MediaColumns.DATA, finalPath.absolutePath)
                 }
             }
             val collection = if (media.mimeType.startsWith("video")) {

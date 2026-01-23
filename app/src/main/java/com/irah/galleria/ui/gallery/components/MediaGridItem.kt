@@ -1,5 +1,4 @@
 package com.irah.galleria.ui.gallery.components
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,20 +14,21 @@ import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import coil.size.Size
 import com.irah.galleria.domain.model.Media
-import com.irah.galleria.ui.common.shimmer
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaGridItem(
     media: Media,
@@ -37,6 +37,7 @@ fun MediaGridItem(
     cornerRadius: Int = 12,
     animationsEnabled: Boolean = true,
     isSelected: Boolean = false,
+    gridColumnCount: Int = 4,
     onClick: () -> Unit
 ) {
     val containerModifier = if (!isStaggered) {
@@ -46,31 +47,48 @@ fun MediaGridItem(
         val ratio = rawRatio.coerceIn(0.6f, 1.33f)
         modifier.aspectRatio(ratio)
     }
+
+    val shape = remember(cornerRadius) { RoundedCornerShape(cornerRadius.dp) }
+    
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val density = LocalDensity.current.density
+    val thumbnailSizePx = remember(screenWidthDp, gridColumnCount) {
+        ((screenWidthDp / gridColumnCount) * density).toInt().coerceAtLeast(100)
+    }
+    
+    val context = LocalContext.current
+    val imageRequest = remember(media.uri, thumbnailSizePx) {
+        ImageRequest.Builder(context)
+            .data(media.uri)
+            .size(thumbnailSizePx)
+            .memoryCacheKey("${media.id}_$thumbnailSizePx")
+            .diskCacheKey("${media.id}_$thumbnailSizePx")
+            .allowHardware(true)
+            .allowRgb565(true)
+            .crossfade(false)
+            .build()
+    }
+    
+    val painter = rememberAsyncImagePainter(
+        model = imageRequest,
+        filterQuality = FilterQuality.Low
+    )
+
     Box(
         modifier = containerModifier
             .padding(2.dp)
             .graphicsLayer {
-                shape = RoundedCornerShape(cornerRadius.dp)
-                clip = true
+                this.shape = shape
+                this.clip = true
             }
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
-        val painter = rememberAsyncImagePainter(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(media.uri)
-                .crossfade(false)
-                .allowHardware(true)
-                .allowRgb565(true)
-                .allowConversionToBitmap(true)
-                .build()
-        )
-
         Image(
             painter = painter,
             contentDescription = media.name,
             contentScale = ContentScale.Crop, 
-            modifier = Modifier.fillMaxSize().shimmer(animationsEnabled && painter.state is AsyncImagePainter.State.Loading)
+            modifier = Modifier.fillMaxSize()
         )
         if (isSelected) {
             Box(

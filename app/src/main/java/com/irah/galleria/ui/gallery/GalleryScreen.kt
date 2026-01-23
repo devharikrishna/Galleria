@@ -44,9 +44,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.imageLoader
 import com.irah.galleria.domain.usecase.FilterType
 import com.irah.galleria.domain.util.MediaOrder
 import com.irah.galleria.domain.util.OrderType
@@ -106,13 +108,28 @@ fun GalleryScreen(
     val bottomBarVisibility = com.irah.galleria.ui.LocalBottomBarVisibility.current
     val nestedScrollConnection = remember {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            var accumulatedScroll = 0f
+
             override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                if (available.y < -15) { 
-                    if (bottomBarVisibility.value) bottomBarVisibility.value = false 
-                } 
-                else if (available.y > 15) { 
-                    if (!bottomBarVisibility.value) bottomBarVisibility.value = true 
+                val delta = available.y
+                
+                // Reset accumulation if direction changes logic can be subtle, 
+                // but usually just adding to accumulator works if we clamp or reset on toggle.
+                // A simple approach:
+                if ((delta > 0 && accumulatedScroll < 0) || (delta < 0 && accumulatedScroll > 0)) {
+                    accumulatedScroll = 0f
                 }
+                
+                accumulatedScroll += delta
+
+                if (accumulatedScroll < -150) { // Scroll down (content moves up)
+                    if (bottomBarVisibility.value) bottomBarVisibility.value = false
+                    accumulatedScroll = 0f // Reset after triggering
+                } else if (accumulatedScroll > 150) { // Scroll up (content moves down)
+                    if (!bottomBarVisibility.value) bottomBarVisibility.value = true
+                    accumulatedScroll = 0f // Reset after triggering
+                }
+                
                 return super.onPreScroll(available, source)
             }
         }
@@ -313,7 +330,43 @@ fun GalleryScreen(
                 )
                 val mediaIds = remember(state.media) { state.media.map { it.id } }
                 if (settings.galleryViewType == com.irah.galleria.domain.model.GalleryViewType.GRID) {
-                    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                        val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                        
+                        // Smart Pre-loading for Grid - use singleton ImageLoader
+                        val imageLoader = context.imageLoader
+                        val preloadedIds = remember { mutableSetOf<Long>() }
+                        val lastVisibleIndex by remember {
+                           androidx.compose.runtime.derivedStateOf {
+                               gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                           }
+                        }
+                        
+                        val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+                        val density = androidx.compose.ui.platform.LocalDensity.current.density
+                        val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
+                             ((screenWidth / settings.galleryGridCount) * density).toInt()
+                        }
+                        
+                        androidx.compose.runtime.LaunchedEffect(lastVisibleIndex) {
+                            val totalItems = state.media.size
+                            val startIndex = lastVisibleIndex + 1
+                            val endIndex = (startIndex + 20).coerceAtMost(totalItems)
+                            
+                            if (startIndex < endIndex) {
+                                for (i in startIndex until endIndex) {
+                                    val media = state.media[i]
+                                    if (preloadedIds.add(media.id)) {
+                                        val request = coil.request.ImageRequest.Builder(context)
+                                            .data(media.uri)
+                                            .size(itemSizePx)
+                                            .memoryCacheKey("${media.id}_$itemSizePx")
+                                            .diskCacheKey("${media.id}_$itemSizePx")
+                                            .build()
+                                        imageLoader.enqueue(request)
+                                    }
+                                }
+                            }
+                        }
                     com.irah.galleria.ui.gallery.components.DragSelectReceiver(
                         items = mediaIds,
                         selectedIds = state.selectedMediaIds,
@@ -356,6 +409,7 @@ fun GalleryScreen(
                                         cornerRadius = settings.galleryCornerRadius,
                                         animationsEnabled = settings.animationsEnabled,
                                         isSelected = isSelected,
+                                        gridColumnCount = settings.galleryGridCount,
                                         onClick = {
                                             if (state.isSelectionMode) {
                                                 viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
@@ -372,6 +426,42 @@ fun GalleryScreen(
                     }
                 } else {
                     val staggeredGridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
+
+                    // Smart Pre-loading for Staggered Grid - use singleton ImageLoader
+                    val imageLoader = context.imageLoader
+                    val preloadedIds = remember { mutableSetOf<Long>() }
+                    val lastVisibleIndex by remember {
+                        androidx.compose.runtime.derivedStateOf {
+                            staggeredGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        }
+                    }
+                    
+                    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+                    val density = androidx.compose.ui.platform.LocalDensity.current.density
+                    val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
+                         ((screenWidth / settings.galleryGridCount) * density).toInt()
+                    }
+
+                    androidx.compose.runtime.LaunchedEffect(lastVisibleIndex) {
+                        val totalItems = state.media.size
+                        val startIndex = lastVisibleIndex + 1
+                        val endIndex = (startIndex + 20).coerceAtMost(totalItems)
+
+                        if (startIndex < endIndex) {
+                            for (i in startIndex until endIndex) {
+                                val media = state.media[i]
+                                if (preloadedIds.add(media.id)) {
+                                    val request = coil.request.ImageRequest.Builder(context)
+                                        .data(media.uri)
+                                        .size(itemSizePx)
+                                        .memoryCacheKey("${media.id}_$itemSizePx")
+                                        .diskCacheKey("${media.id}_$itemSizePx")
+                                        .build()
+                                    imageLoader.enqueue(request)
+                                }
+                            }
+                        }
+                    }
                     com.irah.galleria.ui.gallery.components.DragSelectReceiver(
                         items = mediaIds,
                         selectedIds = state.selectedMediaIds,
@@ -415,6 +505,7 @@ fun GalleryScreen(
                                         cornerRadius = settings.galleryCornerRadius,
                                         animationsEnabled = settings.animationsEnabled,
                                         isSelected = isSelected,
+                                        gridColumnCount = settings.galleryGridCount,
                                         onClick = {
                                             if (state.isSelectionMode) {
                                                 viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))

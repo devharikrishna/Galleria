@@ -214,7 +214,7 @@ fun RecycleBinScreen(
                             MediaGridItem(
                                 media = media,
                                 isSelected = isSelected,
-                                animationsEnabled = false,
+                                animationsEnabled = true,
                                 onClick = {
                                     if (state.isSelectionMode) {
                                          viewModel.onEvent(RecycleBinEvent.ToggleSelection(media.id))    

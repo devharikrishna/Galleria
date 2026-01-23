@@ -11,8 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +29,24 @@ fun AlbumGridItem(
     cornerRadius: Int = 12,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val imageRequest = remember(album.uri) {
+        ImageRequest.Builder(context)
+            .data(album.uri)
+            .size(300)
+            .memoryCacheKey("album_${album.id}_300")
+            .diskCacheKey("album_${album.id}_300")
+            .allowHardware(true)
+            .allowRgb565(true)
+            .crossfade(false)
+            .build()
+    }
+    
+    val painter = rememberAsyncImagePainter(
+        model = imageRequest,
+        filterQuality = FilterQuality.Low
+    )
+    
     Column(
         modifier = modifier
             .padding(4.dp)
@@ -43,13 +62,7 @@ fun AlbumGridItem(
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Image(
-                painter = rememberAsyncImagePainter(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(album.uri)
-                        .size(300)
-                        .crossfade(false)
-                        .build()
-                ),
+                painter = painter,
                 contentDescription = album.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
