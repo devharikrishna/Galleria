@@ -28,4 +28,11 @@ sealed class Screen(val route: String) {
             }
         )
     }
+    object Editor : Screen("editor_screen") {
+        const val MEDIA_ID_ARG = "mediaId"
+        val routeWithArgs = "$route/{$MEDIA_ID_ARG}"
+        val arguments: List<NamedNavArgument> = listOf(
+            navArgument(MEDIA_ID_ARG) { type = NavType.LongType }
+        )
+    }
 }

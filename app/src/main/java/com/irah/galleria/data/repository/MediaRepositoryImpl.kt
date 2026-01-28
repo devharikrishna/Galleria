@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 class MediaRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
@@ -279,6 +280,100 @@ class MediaRepositoryImpl @Inject constructor(
             return null
         }
     }
+    override suspend fun getMediaById(id: Long): Media? = withContext(Dispatchers.IO) {
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.DATE_TAKEN,
+            MediaStore.MediaColumns.DATA,
+            MediaStore.MediaColumns.BUCKET_ID,
+            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
+            MediaStore.MediaColumns.WIDTH,
+            MediaStore.MediaColumns.HEIGHT,
+            MediaStore.MediaColumns.DURATION,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.MediaColumns.RELATIVE_PATH else MediaStore.MediaColumns.DATA
+        )
+        val selection = "${MediaStore.MediaColumns._ID} = ?"
+        val selectionArgs = arrayOf(id.toString())
+        val queryUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+             MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            MediaStore.Files.getContentUri("external")
+        }
+
+        try {
+            contentResolver.query(
+                queryUri,
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                    val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                    val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                    val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                    val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                    val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+                    val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                    val bucketIdColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_ID)
+                    val bucketNameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+                    val widthColumn = cursor.getColumnIndex(MediaStore.MediaColumns.WIDTH)
+                    val heightColumn = cursor.getColumnIndex(MediaStore.MediaColumns.HEIGHT)
+                    val durationColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DURATION)
+
+                    val retrievedId = cursor.getLong(idColumn)
+                    val name = cursor.getString(nameColumn) ?: "Unknown"
+                    val size = cursor.getLong(sizeColumn)
+                    val mimeType = cursor.getString(mimeTypeColumn) ?: ""
+                    val dateAdded = cursor.getLong(dateAddedColumn)
+                    val dateTaken = cursor.getLong(dateTakenColumn)
+                    val path = cursor.getString(dataColumn) ?: ""
+                    val bucketId = cursor.getLong(bucketIdColumn)
+                    val bucketName = cursor.getString(bucketNameColumn) ?: "Unknown"
+                    val width = if (widthColumn != -1) cursor.getInt(widthColumn) else 0
+                    val height = if (heightColumn != -1) cursor.getInt(heightColumn) else 0
+                    val duration = if (durationColumn != -1) cursor.getLong(durationColumn) else null
+                    val relativePath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                           cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH))
+                        } catch(e: Exception) { null }
+                    } else null
+                    
+                    val contentUri = ContentUris.withAppendedId(
+                        if (mimeType.startsWith("video")) MediaStore.Video.Media.EXTERNAL_CONTENT_URI 
+                        else MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        retrievedId
+                    )
+                    
+                    return@withContext Media(
+                        id = retrievedId,
+                        uri = contentUri.toString(),
+                        path = path,
+                        name = name,
+                        size = size,
+                        mimeType = mimeType,
+                        timestamp = dateAdded,
+                        dateTaken = dateTaken,
+                        duration = duration,
+                        width = width,
+                        height = height,
+                        bucketId = bucketId,
+                        bucketName = bucketName,
+                        relativePath = relativePath
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return@withContext null
+    }
+
     private fun queryMedia(albumId: Long? = null): List<Media> {
         val mediaList = mutableListOf<Media>()
         val projection = arrayOf(

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Share
@@ -167,6 +168,25 @@ fun MediaViewerScreen(
                             IconButton(onClick = { showInfoSheet = true }) {
                                 Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
                             }
+                            IconButton(onClick = {
+                                if (currentMedia.isVideo) {
+                                    try {
+                                        val editIntent = android.content.Intent(android.content.Intent.ACTION_EDIT).apply {
+                                            setDataAndType(currentMedia.uri.toUri(), currentMedia.mimeType)
+                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(editIntent)
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "No video editor app found", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    navController.navigate(
+                                        com.irah.galleria.ui.navigation.Screen.Editor.route + "/${currentMedia.id}"
+                                    )
+                                }
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
+                            }
                             IconButton(onClick = { 
                                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                     type = currentMedia.mimeType
@@ -214,6 +234,25 @@ fun MediaViewerScreen(
                             showInfoSheet = true 
                         }) {
                             Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
+                        }
+                        IconButton(onClick = {
+                            if (currentMedia.isVideo) {
+                                try {
+                                    val editIntent = android.content.Intent(android.content.Intent.ACTION_EDIT).apply {
+                                        setDataAndType(currentMedia.uri.toUri(), currentMedia.mimeType)
+                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(editIntent)
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "No video editor app found", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                navController.navigate(
+                                    com.irah.galleria.ui.navigation.Screen.Editor.route + "/${currentMedia.id}"
+                                )
+                            }
+                        }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
                         }
                         IconButton(onClick = { 
                             val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {

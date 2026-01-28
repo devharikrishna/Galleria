@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-sdk tools:overrideLibrary="androidx.compose.remote.player.core" />
+
     <!-- Permissions for accessing media -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:ignore="SelectedPhotoAccess" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />

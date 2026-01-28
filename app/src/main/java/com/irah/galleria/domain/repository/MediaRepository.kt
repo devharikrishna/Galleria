@@ -11,5 +11,6 @@ interface MediaRepository {
     suspend fun copyMedia(mediaList: List<Media>, targetPath: String)
     fun getTrashedMedia(): Flow<List<Media>>
     suspend fun restoreMedia(mediaList: List<Media>): android.content.IntentSender?
+    suspend fun getMediaById(id: Long): Media?
     suspend fun deleteForever(mediaList: List<Media>): android.content.IntentSender?
 }

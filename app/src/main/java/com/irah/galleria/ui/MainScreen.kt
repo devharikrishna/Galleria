@@ -178,6 +178,12 @@ fun MainScreen() {
                 ) {
                     MediaViewerScreen(navController = navController)
                 }
+                composable(
+                    route = Screen.Editor.routeWithArgs,
+                    arguments = Screen.Editor.arguments
+                ) {
+                    com.irah.galleria.ui.editor.EditorScreen(navController = navController)
+                }
             }
         }
     }

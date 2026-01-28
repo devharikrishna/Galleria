@@ -22,14 +22,18 @@ class GetMediaUseCase @Inject constructor(
             when(mediaOrder.orderType) {
                 is OrderType.Ascending -> {
                     when(mediaOrder) {
-                        is MediaOrder.Date -> filteredList.sortedBy { it.dateTaken }
+                        is MediaOrder.Date -> filteredList.sortedBy { 
+                            if (it.dateTaken > 0) it.dateTaken else it.timestamp * 1000 
+                        }
                         is MediaOrder.Name -> filteredList.sortedBy { it.name.lowercase() }
                         is MediaOrder.Size -> filteredList.sortedBy { it.size }
                     }
                 }
                 is OrderType.Descending -> {
                     when(mediaOrder) {
-                        is MediaOrder.Date -> filteredList.sortedByDescending { it.dateTaken }
+                        is MediaOrder.Date -> filteredList.sortedByDescending { 
+                            if (it.dateTaken > 0) it.dateTaken else it.timestamp * 1000 
+                        }
                         is MediaOrder.Name -> filteredList.sortedByDescending { it.name.lowercase() }
                         is MediaOrder.Size -> filteredList.sortedByDescending { it.size }
                     }
