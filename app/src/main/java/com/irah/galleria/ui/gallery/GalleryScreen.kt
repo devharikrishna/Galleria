@@ -349,196 +349,34 @@ fun GalleryScreen(
                     end = 4.dp
                 )
                 val mediaIds = remember(state.media) { state.media.map { it.id } }
-                if (settings.galleryViewType == com.irah.galleria.domain.model.GalleryViewType.GRID) {
-                        val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-                        
-                        // Smart Pre-loading for Grid - use singleton ImageLoader
-                        val imageLoader = context.imageLoader
-                        val preloadedIds = remember { mutableSetOf<Long>() }
-                        val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
-                        val density = androidx.compose.ui.platform.LocalDensity.current.density
-                        val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
-                             ((screenWidth / settings.galleryGridCount) * density).toInt()
-                        }
-                        androidx.compose.runtime.LaunchedEffect(Unit) {
-                            androidx.compose.runtime.snapshotFlow {
-                                gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            }.collect { lastVisibleIndex ->
-                                val totalItems = state.media.size
-                                val startIndex = lastVisibleIndex + 1
-                                val endIndex = (startIndex + 20).coerceAtMost(totalItems)
-                                
-                                if (startIndex < endIndex) {
-                                    for (i in startIndex until endIndex) {
-                                        if (i in state.media.indices) {
-                                            val media = state.media[i]
-                                            if (preloadedIds.add(media.id)) {
-                                                val request = coil.request.ImageRequest.Builder(context)
-                                                    .data(media.uri)
-                                                    .size(itemSizePx)
-                                                    .memoryCacheKey("${media.id}_$itemSizePx")
-                                                    .diskCacheKey("${media.id}_$itemSizePx")
-                                                    .build()
-                                                imageLoader.enqueue(request)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    com.irah.galleria.ui.gallery.components.DragSelectReceiver(
-                        items = mediaIds,
-                        selectedIds = state.selectedMediaIds,
-                        onSelectionChange = { ids ->
-                             viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
-                        },
-                        getItemIndexAtPosition = { offset ->
-                            gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
-                                val itemOffset = item.offset
-                                val itemSize = item.size
-                                offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
-                                offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
-                            }?.index
-                        },
-                        scrollBy = { gridState.scrollBy(it) },
-                        viewportHeight = { gridState.layoutInfo.viewportSize.height }
-                    ) { dragModifier ->
-                        com.irah.galleria.ui.gallery.components.FastScroller(
-                            gridState = gridState,
-                            itemCount = state.media.size,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            LazyVerticalGrid(
-                                state = gridState,
-                                columns = GridCells.Fixed(settings.galleryGridCount),
-                                modifier = Modifier.fillMaxSize().then(dragModifier),
-                                contentPadding = contentPadding,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                items(
-                                    items = state.media,
-                                    key = { it.id },
-                                    contentType = { "media" }
-                                ) { media ->
-                                    val isSelected = state.selectedMediaIds.contains(media.id)
-                                    MediaGridItem(
-                                        media = media,
-                                        isStaggered = false,
-                                        cornerRadius = settings.galleryCornerRadius,
-                                        animationsEnabled = settings.animationsEnabled,
-                                        isSelected = isSelected,
-                                        gridColumnCount = settings.galleryGridCount,
-                                        onClick = {
-                                            if (state.isSelectionMode) {
-                                                viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
-                                            } else {
-                                                navController.navigate(
-                                                    Screen.MediaViewer.route + "/${media.id}"
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    val staggeredGridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
-
-                    // Smart Pre-loading for Staggered Grid - use singleton ImageLoader
-                    val imageLoader = context.imageLoader
-                    val preloadedIds = remember { mutableSetOf<Long>() }
-                    val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
-                    val density = androidx.compose.ui.platform.LocalDensity.current.density
-                    val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
-                         ((screenWidth / settings.galleryGridCount) * density).toInt()
-                    }
-                    androidx.compose.runtime.LaunchedEffect(Unit) {
-                        androidx.compose.runtime.snapshotFlow {
-                            staggeredGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        }.collect { lastVisibleIndex ->
-                            val totalItems = state.media.size
-                            val startIndex = lastVisibleIndex + 1
-                            val endIndex = (startIndex + 20).coerceAtMost(totalItems)
-
-                            if (startIndex < endIndex) {
-                                for (i in startIndex until endIndex) {
-                                    if (i in state.media.indices) {
-                                        val media = state.media[i]
-                                        if (preloadedIds.add(media.id)) {
-                                            val request = coil.request.ImageRequest.Builder(context)
-                                                .data(media.uri)
-                                                .size(itemSizePx)
-                                                .memoryCacheKey("${media.id}_$itemSizePx")
-                                                .diskCacheKey("${media.id}_$itemSizePx")
-                                                .build()
-                                            imageLoader.enqueue(request)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    com.irah.galleria.ui.gallery.components.DragSelectReceiver(
-                        items = mediaIds,
-                        selectedIds = state.selectedMediaIds,
-                        onSelectionChange = { ids ->
-                             viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
-                        },
-                        getItemIndexAtPosition = { offset ->
-                            staggeredGridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
-                                val itemOffset = item.offset
-                                val itemSize = item.size
-                                offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
-                                offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
-                            }?.index
-                        },
-                        scrollBy = { staggeredGridState.scrollBy(it) },
-                        viewportHeight = { staggeredGridState.layoutInfo.viewportSize.height }
-                    ) { dragModifier ->
-                        com.irah.galleria.ui.gallery.components.FastScroller(
-                            staggeredGridState = staggeredGridState,
-                            itemCount = state.media.size,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid(
-                                state = staggeredGridState,
-                                columns = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Fixed(settings.galleryGridCount),
-                                modifier = Modifier.fillMaxSize().then(dragModifier),
-                                contentPadding = contentPadding,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                verticalItemSpacing = 2.dp
-                            ) {
-                                items(
-                                    items = state.media,
-                                    key = { it.id },
-                                    contentType = { "media" }
-                                ) { media ->
-                                    val isSelected = state.selectedMediaIds.contains(media.id)
-                                    MediaGridItem(
-                                        media = media,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        isStaggered = true,
-                                        cornerRadius = settings.galleryCornerRadius,
-                                        animationsEnabled = settings.animationsEnabled,
-                                        isSelected = isSelected,
-                                        gridColumnCount = settings.galleryGridCount,
-                                        onClick = {
-                                            if (state.isSelectionMode) {
-                                                viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
-                                            } else {
-                                                navController.navigate(
-                                                    Screen.MediaViewer.route + "/${media.id}"
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                val staggeredGridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
+                val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+                val density = androidx.compose.ui.platform.LocalDensity.current.density
+                val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
+                     ((screenWidth / settings.galleryGridCount) * density).toInt()
                 }
+
+                com.irah.galleria.ui.gallery.components.GalleryGridContent(
+                    media = state.media,
+                    selectedIds = state.selectedMediaIds,
+                    isSelectionMode = state.isSelectionMode,
+                    settings = settings,
+                    contentPadding = contentPadding,
+                    gridState = gridState,
+                    staggeredGridState = staggeredGridState,
+                    onMediaClick = { media ->
+                         navController.navigate(Screen.MediaViewer.route + "/${media.id}")
+                    },
+                    onSelectionChange = { ids ->
+                        viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
+                    },
+                    onToggleSelection = { id ->
+                        viewModel.onEvent(GalleryEvent.ToggleSelection(id))
+                    },
+                    imageLoader = context.imageLoader,
+                    itemSizePx = itemSizePx
+                )
             }
         }
     }

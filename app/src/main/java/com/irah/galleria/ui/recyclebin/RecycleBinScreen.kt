@@ -180,6 +180,12 @@ fun RecycleBinScreen(
             if (state.media.isEmpty()) {
                 Text("Recycle Bin is empty", modifier = Modifier.align(Alignment.Center))
             } else {
+                val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+                val density = androidx.compose.ui.platform.LocalDensity.current.density
+                val itemSizePx = remember(screenWidth) {
+                    ((screenWidth / 3) * density).toInt()
+                }
+
                 val mediaIds = remember(state.media) { state.media.map { it.id } }
                 val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
                 com.irah.galleria.ui.gallery.components.DragSelectReceiver(
@@ -215,6 +221,7 @@ fun RecycleBinScreen(
                                 media = media,
                                 isSelected = isSelected,
                                 animationsEnabled = true,
+                                itemSizePx = itemSizePx,
                                 onClick = {
                                     if (state.isSelectionMode) {
                                          viewModel.onEvent(RecycleBinEvent.ToggleSelection(media.id))    

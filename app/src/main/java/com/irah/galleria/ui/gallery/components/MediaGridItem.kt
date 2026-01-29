@@ -37,7 +37,7 @@ fun MediaGridItem(
     cornerRadius: Int = 12,
     animationsEnabled: Boolean = true,
     isSelected: Boolean = false,
-    gridColumnCount: Int = 4,
+    itemSizePx: Int,
     onClick: () -> Unit
 ) {
     val containerModifier = if (!isStaggered) {
@@ -50,19 +50,13 @@ fun MediaGridItem(
 
     val shape = remember(cornerRadius) { RoundedCornerShape(cornerRadius.dp) }
     
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val density = LocalDensity.current.density
-    val thumbnailSizePx = remember(screenWidthDp, gridColumnCount) {
-        ((screenWidthDp / gridColumnCount) * density).toInt().coerceAtLeast(100)
-    }
-    
     val context = LocalContext.current
-    val imageRequest = remember(media.uri, thumbnailSizePx) {
+    val imageRequest = remember(media.uri, itemSizePx) {
         ImageRequest.Builder(context)
             .data(media.uri)
-            .size(thumbnailSizePx)
-            .memoryCacheKey("${media.id}_$thumbnailSizePx")
-            .diskCacheKey("${media.id}_$thumbnailSizePx")
+            .size(itemSizePx)
+            .memoryCacheKey("${media.id}_$itemSizePx")
+            .diskCacheKey("${media.id}_$itemSizePx")
             .allowHardware(true)
             .allowRgb565(true)
             .crossfade(false)
