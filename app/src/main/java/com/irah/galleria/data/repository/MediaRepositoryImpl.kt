@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import com.irah.galleria.domain.model.Album
 import com.irah.galleria.domain.model.Media
 import com.irah.galleria.domain.repository.MediaRepository
@@ -18,40 +19,57 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 class MediaRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : MediaRepository {
     private val contentResolver: ContentResolver = context.contentResolver
-    override fun getMedia(): Flow<List<Media>> = callbackFlow {
-        val observer = object : ContentObserver(null) {
-            override fun onChange(selfChange: Boolean) {
-                trySend(queryMedia())
+    private val prefs = context.getSharedPreferences("media_favorites", Context.MODE_PRIVATE)
+    private val favoritesFlow = MutableStateFlow(loadFavorites())
+
+    private fun loadFavorites(): Set<String> {
+        return prefs.getStringSet("favorite_ids", emptySet()) ?: emptySet()
+    }
+
+    override fun getMedia(): Flow<List<Media>> {
+        val mediaFlow = callbackFlow {
+            val observer = object : ContentObserver(null) {
+                override fun onChange(selfChange: Boolean) {
+                    trySend(queryMedia())
+                }
             }
+            contentResolver.registerContentObserver(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                } else {
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                },
+                true,
+                observer
+            )
+            contentResolver.registerContentObserver(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                } else {
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                },
+                true,
+                observer
+            )
+            trySend(queryMedia())
+            awaitClose {
+                contentResolver.unregisterContentObserver(observer)
+            }
+        }.flowOn(Dispatchers.IO)
+
+        return combine(mediaFlow, favoritesFlow) { mediaList, favs ->
+             mediaList.map { it.copy(isFavorite = favs.contains(it.id.toString())) }
         }
-        contentResolver.registerContentObserver(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-            } else {
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            },
-            true,
-            observer
-        )
-        contentResolver.registerContentObserver(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-            } else {
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            },
-            true,
-            observer
-        )
-        trySend(queryMedia())
-        awaitClose {
-            contentResolver.unregisterContentObserver(observer)
-        }
-    }.flowOn(Dispatchers.IO)
+    }
     override fun getAlbums(): Flow<List<Album>> = callbackFlow {
         val observer = object : ContentObserver(null) {
             override fun onChange(selfChange: Boolean) {
@@ -67,21 +85,28 @@ class MediaRepositoryImpl @Inject constructor(
         trySend(queryAlbums())
         awaitClose { contentResolver.unregisterContentObserver(observer) }
     }.flowOn(Dispatchers.IO)
-    override fun getMediaByAlbumId(albumId: Long): Flow<List<Media>> = callbackFlow {
-        val observer = object : ContentObserver(null) {
-            override fun onChange(selfChange: Boolean) {
-                trySend(queryMedia(albumId))
+    override fun getMediaByAlbumId(albumId: Long): Flow<List<Media>> {
+        val mediaFlow = callbackFlow {
+            val observer = object : ContentObserver(null) {
+                override fun onChange(selfChange: Boolean) {
+                    trySend(queryMedia(albumId))
+                }
             }
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            } else {
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            }
+            contentResolver.registerContentObserver(uri, true, observer)
+            trySend(queryMedia(albumId))
+            awaitClose { contentResolver.unregisterContentObserver(observer) }
+        }.flowOn(Dispatchers.IO)
+        
+        return combine(mediaFlow, favoritesFlow) { mediaList, favs ->
+             mediaList.map { it.copy(isFavorite = favs.contains(it.id.toString())) }
         }
-        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        } else {
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        }
-        contentResolver.registerContentObserver(uri, true, observer)
-        trySend(queryMedia(albumId))
-        awaitClose { contentResolver.unregisterContentObserver(observer) }
-    }.flowOn(Dispatchers.IO)
+    }
+    @RequiresApi(Build.VERSION_CODES.Q)
     override suspend fun deleteMedia(mediaList: List<Media>): android.content.IntentSender? {
         if (mediaList.isEmpty()) return null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -141,7 +166,7 @@ class MediaRepositoryImpl @Inject constructor(
                     }
                 }
             }
-            if (neededPermissions.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (neededPermissions.isNotEmpty()) {
                 val pi = MediaStore.createWriteRequest(contentResolver, neededPermissions)
                 return pi.intentSender
             }
@@ -364,7 +389,8 @@ class MediaRepositoryImpl @Inject constructor(
                         height = height,
                         bucketId = bucketId,
                         bucketName = bucketName,
-                        relativePath = relativePath
+                        relativePath = relativePath,
+                        isFavorite = favoritesFlow.value.contains(retrievedId.toString())
                     )
                 }
             }
@@ -597,5 +623,30 @@ class MediaRepositoryImpl @Inject constructor(
             e.printStackTrace()
         }
         return mediaList
+    }
+    override suspend fun toggleFavorite(mediaId: String) {
+        val current = favoritesFlow.value.toMutableSet()
+        if (current.contains(mediaId)) {
+            current.remove(mediaId)
+        } else {
+            current.add(mediaId)
+        }
+        prefs.edit().putStringSet("favorite_ids", current).apply()
+        favoritesFlow.update { current }
+    }
+
+    override fun getFavorites(): Flow<List<Media>> {
+        return getMedia().map { list ->
+            list.filter { it.isFavorite }
+        }
+    }
+
+    override fun getScreenshots(): Flow<List<Media>> {
+        return getMedia().map { list ->
+            list.filter { 
+                it.bucketName.contains("Screenshot", ignoreCase = true) || 
+                (it.relativePath?.contains("Screenshot", ignoreCase = true) == true)
+            }
+        }
     }
 }

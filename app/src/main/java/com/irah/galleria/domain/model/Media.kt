@@ -15,7 +15,8 @@ data class Media(
     val height: Int = 0,
     val bucketId: Long = 0,
     val bucketName: String = "",
-    val relativePath: String? = null
+    val relativePath: String? = null,
+    val isFavorite: Boolean = false
 ) {
     val isVideo: Boolean
         get() = mimeType.startsWith("video/")

@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -165,6 +167,13 @@ fun MediaViewerScreen(
                     
                     if (isLandscape) {
                          Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { viewModel.toggleFavorite(currentMedia) }) {
+                                Icon(
+                                    if (currentMedia.isFavorite) Icons.Default.Favorite else Icons.Filled.FavoriteBorder,
+                                    contentDescription = "Favorite",
+                                    tint = if (currentMedia.isFavorite) Color.Red else Color.White
+                                )
+                            }
                             IconButton(onClick = { showInfoSheet = true }) {
                                 Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
                             }
@@ -230,6 +239,13 @@ fun MediaViewerScreen(
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
+                        IconButton(onClick = { viewModel.toggleFavorite(currentMedia) }) {
+                            Icon(
+                                if (currentMedia.isFavorite) Icons.Default.Favorite else Icons.Filled.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (currentMedia.isFavorite) Color.Red else Color.White
+                            )
+                        }
                         IconButton(onClick = { 
                             showInfoSheet = true 
                         }) {

@@ -6,17 +6,23 @@ import com.irah.galleria.domain.model.Media
 import com.irah.galleria.domain.repository.MediaRepository
 import com.irah.galleria.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.core.net.toUri
+
 data class AlbumDetailState(
     val media: List<Media> = emptyList(),
     val albumName: String = "",
     val isLoading: Boolean = false,
     val isSelectionMode: Boolean = false,
-    val selectedMediaIds: Set<Long> = emptySet()
+    val selectedMediaIds: Set<Long> = emptySet(),
+    val isTrash: Boolean = false,
+    val albumId: Long = -1L
 )
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
@@ -28,15 +34,41 @@ class AlbumDetailViewModel @Inject constructor(
     val state: StateFlow<AlbumDetailState> = _state.asStateFlow()
     private val albumId: Long = savedStateHandle[Screen.AlbumDetail.ALBUM_ID_ARG] ?: -1L
     private val albumName: String = savedStateHandle[Screen.AlbumDetail.ALBUM_NAME_ARG] ?: "Album"
+
+    private val _uiEvent = Channel<AlbumDetailUiEvent>()
+    val uiEvent = _uiEvent.receiveAsFlow()
+
     init {
-        _state.value = _state.value.copy(albumName = albumName)
+        _state.value = _state.value.copy(
+            albumName = albumName,
+            isTrash = albumId == -4L,
+            albumId = albumId
+        )
         loadMedia()
     }
     private fun loadMedia() {
         viewModelScope.launch {
-            if (albumId != -1L) {
-                repository.getMediaByAlbumId(albumId).collect { mediaList ->
-                    _state.value = _state.value.copy(media = mediaList)
+            when (albumId) {
+                -2L -> { // Favorites
+                     repository.getFavorites().collect { mediaList ->
+                         _state.value = _state.value.copy(media = mediaList)
+                     }
+                }
+                -3L -> { // Screenshots
+                    repository.getScreenshots().collect { mediaList ->
+                         _state.value = _state.value.copy(media = mediaList)
+                     }
+                }
+                -4L -> { // Trash
+                    repository.getTrashedMedia().collect { mediaList ->
+                         _state.value = _state.value.copy(media = mediaList)
+                     }
+                }
+                -1L -> { /* Invalid */ }
+                else -> {
+                    repository.getMediaByAlbumId(albumId).collect { mediaList ->
+                        _state.value = _state.value.copy(media = mediaList)
+                    }
                 }
             }
         }
@@ -102,9 +134,7 @@ class AlbumDetailViewModel @Inject constructor(
         viewModelScope.launch {
              val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
              if (selectedMedia.isEmpty()) return@launch
-             val uris = ArrayList(selectedMedia.map { it.uri.let { uriString ->
-                 android.net.Uri.parse(uriString)
-             } })
+             val uris = ArrayList(selectedMedia.map { it.uri.toUri() })
              val shareIntent = android.content.Intent().apply {
                  if (uris.size == 1) {
                      action = android.content.Intent.ACTION_SEND
@@ -120,10 +150,44 @@ class AlbumDetailViewModel @Inject constructor(
              context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
         }
     }
+    fun favoriteSelectedMedia() {
+        viewModelScope.launch {
+             val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
+             val hasNonFavorite = selectedMedia.any { !it.isFavorite }
+             selectedMedia.forEach { media ->
+                 if (media.isFavorite != hasNonFavorite) {
+                     repository.toggleFavorite(media.id.toString())
+                 }
+             }
+             if (hasNonFavorite) {
+                 _uiEvent.send(AlbumDetailUiEvent.ShowSnackbar("Added to favorites"))
+             } else {
+                 _uiEvent.send(AlbumDetailUiEvent.ShowSnackbar("Removed from favorites"))
+             }
+             onEvent(AlbumDetailEvent.ClearSelection)
+        }
+    }
+
+     fun restoreSelectedMedia(intentSenderLauncher: (android.content.IntentSender) -> Unit) {
+        viewModelScope.launch {
+            val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
+            val intentSender = repository.restoreMedia(selectedMedia)
+            if (intentSender != null) {
+                intentSenderLauncher(intentSender)
+            } else {
+                 onEvent(AlbumDetailEvent.ClearSelection)
+            }
+        }
+    }
+
     val albums = repository.getAlbums()
 }
 sealed class AlbumDetailEvent {
     data class ToggleSelection(val mediaId: Long) : AlbumDetailEvent()
     data class UpdateSelection(val selectedIds: Set<Long>) : AlbumDetailEvent()
     object ClearSelection : AlbumDetailEvent()
+}
+
+sealed class AlbumDetailUiEvent {
+    data class ShowSnackbar(val message: String): AlbumDetailUiEvent()
 }

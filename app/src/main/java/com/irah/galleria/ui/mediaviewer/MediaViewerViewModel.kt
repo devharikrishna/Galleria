@@ -20,6 +20,7 @@ data class MediaViewerState(
 @HiltViewModel
 class MediaViewerViewModel @Inject constructor(
     private val getMediaUseCase: GetMediaUseCase,
+    private val repository: com.irah.galleria.domain.repository.MediaRepository,
     private val deleteMediaUseCase: DeleteMediaUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -55,5 +56,10 @@ class MediaViewerViewModel @Inject constructor(
              } else {
              }
          }
+    }
+    fun toggleFavorite(media: Media) {
+        viewModelScope.launch {
+            repository.toggleFavorite(media.id.toString())
+        }
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Share
@@ -41,6 +42,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -54,6 +58,7 @@ import com.irah.galleria.domain.util.MediaOrder
 import com.irah.galleria.domain.util.OrderType
 import com.irah.galleria.ui.gallery.components.MediaGridItem
 import com.irah.galleria.ui.navigation.Screen
+import com.irah.galleria.ui.gallery.GalleryUiEvent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryScreen(
@@ -65,6 +70,16 @@ fun GalleryScreen(
     val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
     androidx.activity.compose.BackHandler(enabled = state.isSelectionMode) {
         viewModel.onEvent(GalleryEvent.ClearSelection)
+    }
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(key1 = true) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is GalleryUiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
     }
     var showSortMenu by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -138,6 +153,7 @@ fun GalleryScreen(
     val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
     com.irah.galleria.ui.theme.GlassScaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             val topBarColors = if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
                 TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
@@ -159,6 +175,10 @@ fun GalleryScreen(
                     },
                     colors = topBarColors,
                     actions = {
+
+                        IconButton(onClick = { viewModel.favoriteSelectedMedia() }) {
+                            Icon(Icons.Default.FavoriteBorder, contentDescription = "Favorite")
+                        }
                         IconButton(onClick = { 
                             isCopyOperation = false
                             showAlbumSelectionSheet = true 
@@ -335,34 +355,33 @@ fun GalleryScreen(
                         // Smart Pre-loading for Grid - use singleton ImageLoader
                         val imageLoader = context.imageLoader
                         val preloadedIds = remember { mutableSetOf<Long>() }
-                        val lastVisibleIndex by remember {
-                           androidx.compose.runtime.derivedStateOf {
-                               gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                           }
-                        }
-                        
                         val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
                         val density = androidx.compose.ui.platform.LocalDensity.current.density
                         val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
                              ((screenWidth / settings.galleryGridCount) * density).toInt()
                         }
-                        
-                        androidx.compose.runtime.LaunchedEffect(lastVisibleIndex) {
-                            val totalItems = state.media.size
-                            val startIndex = lastVisibleIndex + 1
-                            val endIndex = (startIndex + 20).coerceAtMost(totalItems)
-                            
-                            if (startIndex < endIndex) {
-                                for (i in startIndex until endIndex) {
-                                    val media = state.media[i]
-                                    if (preloadedIds.add(media.id)) {
-                                        val request = coil.request.ImageRequest.Builder(context)
-                                            .data(media.uri)
-                                            .size(itemSizePx)
-                                            .memoryCacheKey("${media.id}_$itemSizePx")
-                                            .diskCacheKey("${media.id}_$itemSizePx")
-                                            .build()
-                                        imageLoader.enqueue(request)
+                        androidx.compose.runtime.LaunchedEffect(Unit) {
+                            androidx.compose.runtime.snapshotFlow {
+                                gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            }.collect { lastVisibleIndex ->
+                                val totalItems = state.media.size
+                                val startIndex = lastVisibleIndex + 1
+                                val endIndex = (startIndex + 20).coerceAtMost(totalItems)
+                                
+                                if (startIndex < endIndex) {
+                                    for (i in startIndex until endIndex) {
+                                        if (i in state.media.indices) {
+                                            val media = state.media[i]
+                                            if (preloadedIds.add(media.id)) {
+                                                val request = coil.request.ImageRequest.Builder(context)
+                                                    .data(media.uri)
+                                                    .size(itemSizePx)
+                                                    .memoryCacheKey("${media.id}_$itemSizePx")
+                                                    .diskCacheKey("${media.id}_$itemSizePx")
+                                                    .build()
+                                                imageLoader.enqueue(request)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -430,34 +449,33 @@ fun GalleryScreen(
                     // Smart Pre-loading for Staggered Grid - use singleton ImageLoader
                     val imageLoader = context.imageLoader
                     val preloadedIds = remember { mutableSetOf<Long>() }
-                    val lastVisibleIndex by remember {
-                        androidx.compose.runtime.derivedStateOf {
-                            staggeredGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        }
-                    }
-                    
                     val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
                     val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
                          ((screenWidth / settings.galleryGridCount) * density).toInt()
                     }
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                        androidx.compose.runtime.snapshotFlow {
+                            staggeredGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        }.collect { lastVisibleIndex ->
+                            val totalItems = state.media.size
+                            val startIndex = lastVisibleIndex + 1
+                            val endIndex = (startIndex + 20).coerceAtMost(totalItems)
 
-                    androidx.compose.runtime.LaunchedEffect(lastVisibleIndex) {
-                        val totalItems = state.media.size
-                        val startIndex = lastVisibleIndex + 1
-                        val endIndex = (startIndex + 20).coerceAtMost(totalItems)
-
-                        if (startIndex < endIndex) {
-                            for (i in startIndex until endIndex) {
-                                val media = state.media[i]
-                                if (preloadedIds.add(media.id)) {
-                                    val request = coil.request.ImageRequest.Builder(context)
-                                        .data(media.uri)
-                                        .size(itemSizePx)
-                                        .memoryCacheKey("${media.id}_$itemSizePx")
-                                        .diskCacheKey("${media.id}_$itemSizePx")
-                                        .build()
-                                    imageLoader.enqueue(request)
+                            if (startIndex < endIndex) {
+                                for (i in startIndex until endIndex) {
+                                    if (i in state.media.indices) {
+                                        val media = state.media[i]
+                                        if (preloadedIds.add(media.id)) {
+                                            val request = coil.request.ImageRequest.Builder(context)
+                                                .data(media.uri)
+                                                .size(itemSizePx)
+                                                .memoryCacheKey("${media.id}_$itemSizePx")
+                                                .diskCacheKey("${media.id}_$itemSizePx")
+                                                .build()
+                                            imageLoader.enqueue(request)
+                                        }
+                                    }
                                 }
                             }
                         }

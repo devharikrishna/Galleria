@@ -7,10 +7,12 @@ import com.irah.galleria.domain.usecase.FilterType
 import com.irah.galleria.domain.util.MediaOrder
 import com.irah.galleria.domain.util.OrderType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,6 +35,10 @@ class GalleryViewModel @Inject constructor(
 ) : ViewModel() {
     private val _state = MutableStateFlow(GalleryState())
     val state: StateFlow<GalleryState> = _state.asStateFlow()
+
+    private val _uiEvent = Channel<GalleryUiEvent>()
+    val uiEvent = _uiEvent.receiveAsFlow()
+
     init {
         loadMedia()
         loadAlbums()
@@ -147,6 +153,28 @@ class GalleryViewModel @Inject constructor(
             context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
         }
     }
+
+    fun favoriteSelectedMedia() {
+        viewModelScope.launch {
+             val selectedMedia = _state.value.media.filter { _state.value.selectedMediaIds.contains(it.id) }
+             val hasNonFavorite = selectedMedia.any { !it.isFavorite }
+             selectedMedia.forEach { media ->
+                 if (media.isFavorite != hasNonFavorite) {
+                     mediaRepository.toggleFavorite(media.id.toString())
+                 }
+             }
+             if (hasNonFavorite) {
+                 _uiEvent.send(GalleryUiEvent.ShowSnackbar("Added to favorites"))
+             } else {
+                 _uiEvent.send(GalleryUiEvent.ShowSnackbar("Removed from favorites"))
+             }
+             onEvent(GalleryEvent.ClearSelection)
+        }
+    }
+}
+
+sealed class GalleryUiEvent {
+    data class ShowSnackbar(val message: String): GalleryUiEvent()
 }
 sealed class GalleryEvent {
     data class OrderChange(val mediaOrder: MediaOrder): GalleryEvent()

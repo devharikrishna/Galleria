@@ -13,4 +13,7 @@ interface MediaRepository {
     suspend fun restoreMedia(mediaList: List<Media>): android.content.IntentSender?
     suspend fun getMediaById(id: Long): Media?
     suspend fun deleteForever(mediaList: List<Media>): android.content.IntentSender?
+    suspend fun toggleFavorite(mediaId: String)
+    fun getFavorites(): Flow<List<Media>>
+    fun getScreenshots(): Flow<List<Media>>
 }
