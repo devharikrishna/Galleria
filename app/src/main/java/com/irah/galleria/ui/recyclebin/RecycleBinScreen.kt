@@ -197,9 +197,8 @@ fun RecycleBinScreen(
                     getItemIndexAtPosition = { offset ->
                         gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
                             val itemOffset = item.offset
-                            val itemSize = item.size
-                            offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
-                            offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
+                            offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + item.size.width + 50 &&
+                            offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + item.size.height + 50
                         }?.index
                     },
                     scrollBy = { gridState.scrollBy(it) },

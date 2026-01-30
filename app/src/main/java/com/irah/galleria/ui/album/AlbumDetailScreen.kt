@@ -299,7 +299,7 @@ fun AlbumDetailScreen(
                 staggeredGridState = staggeredGridState,
                 onMediaClick = { media ->
                      navController.navigate(
-                         Screen.MediaViewer.route + "/${media.id}?albumId=${media.bucketId}"
+                         Screen.MediaViewer.route + "/${media.id}?albumId=${state.albumId}"
                      )
                 },
                 onSelectionChange = { ids ->

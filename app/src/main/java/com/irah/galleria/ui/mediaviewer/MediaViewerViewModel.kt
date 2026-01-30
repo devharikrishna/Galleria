@@ -28,20 +28,37 @@ class MediaViewerViewModel @Inject constructor(
     val state: StateFlow<MediaViewerState> = _state.asStateFlow()
     private val mediaId: Long = savedStateHandle[Screen.MediaViewer.MEDIA_ID_ARG] ?: -1L
     private val albumId: Long = savedStateHandle[Screen.MediaViewer.ALBUM_ID_ARG] ?: -1L
+    private val sortType: String = savedStateHandle[Screen.MediaViewer.SORT_TYPE_ARG] ?: "Date"
+    private val orderDesc: Boolean = savedStateHandle[Screen.MediaViewer.ORDER_DESC_ARG] ?: true
+    private val filterTypeStr: String = savedStateHandle[Screen.MediaViewer.FILTER_TYPE_ARG] ?: "All"
+
     init {
         loadMedia()
     }
     private fun loadMedia() {
         viewModelScope.launch {
-            getMediaUseCase().collect { allMedia ->
-                val filteredMedia = if (albumId != -1L) {
-                    allMedia.filter { it.bucketId == albumId }
-                } else {
-                    allMedia
-                }
-                val index = filteredMedia.indexOfFirst { it.id == mediaId }
+            val orderType = if (orderDesc) com.irah.galleria.domain.util.OrderType.Descending else com.irah.galleria.domain.util.OrderType.Ascending
+            val mediaOrder = when(sortType) {
+                "Date" -> com.irah.galleria.domain.util.MediaOrder.Date(orderType)
+                "Name" -> com.irah.galleria.domain.util.MediaOrder.Name(orderType)
+                "Size" -> com.irah.galleria.domain.util.MediaOrder.Size(orderType)
+                else -> com.irah.galleria.domain.util.MediaOrder.Date(orderType)
+            }
+            val filterType = when(filterTypeStr) {
+                 "Images" -> com.irah.galleria.domain.usecase.FilterType.Images
+                 "Videos" -> com.irah.galleria.domain.usecase.FilterType.Videos
+                 else -> com.irah.galleria.domain.usecase.FilterType.All
+            }
+
+            // GetMediaUseCase now handles album filtering and consistent sorting
+            getMediaUseCase(
+                albumId = albumId,
+                mediaOrder = mediaOrder,
+                filterType = filterType
+            ).collect { mediaList ->
+                val index = mediaList.indexOfFirst { it.id == mediaId }
                 _state.value = MediaViewerState(
-                    mediaList = filteredMedia,
+                    mediaList = mediaList,
                     initialIndex = if (index != -1) index else 0,
                     isLoading = false
                 )

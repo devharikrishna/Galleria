@@ -11,9 +11,18 @@ class GetMediaUseCase @Inject constructor(
 ) {
     operator fun invoke(
         mediaOrder: MediaOrder = MediaOrder.Date(OrderType.Descending),
-        filterType: FilterType = FilterType.All
+        filterType: FilterType = FilterType.All,
+        albumId: Long = -1L
     ): Flow<List<Media>> {
-        return repository.getMedia().map { mediaList ->
+        val mediaFlow = when (albumId) {
+            -1L -> repository.getMedia()
+            -2L -> repository.getFavorites()
+            -3L -> repository.getScreenshots()
+            -4L -> repository.getTrashedMedia()
+            else -> repository.getMediaByAlbumId(albumId)
+        }
+
+        return mediaFlow.map { mediaList ->
             val filteredList = when(filterType) {
                 FilterType.All -> mediaList
                 FilterType.Images -> mediaList.filter { !it.isVideo }

@@ -18,13 +18,30 @@ sealed class Screen(val route: String) {
     }
     object MediaViewer : Screen("media_viewer_screen") {
         const val MEDIA_ID_ARG = "mediaId"
-        const val ALBUM_ID_ARG = "albumId"  
-        val routeWithArgs = "$route/{$MEDIA_ID_ARG}?albumId={$ALBUM_ID_ARG}"
+        const val ALBUM_ID_ARG = "albumId"
+        const val SORT_TYPE_ARG = "sortType"
+        const val ORDER_DESC_ARG = "orderDesc"
+        const val FILTER_TYPE_ARG = "filterType"
+        
+        val routeWithArgs = "$route/{$MEDIA_ID_ARG}?$ALBUM_ID_ARG={$ALBUM_ID_ARG}&$SORT_TYPE_ARG={$SORT_TYPE_ARG}&$ORDER_DESC_ARG={$ORDER_DESC_ARG}&$FILTER_TYPE_ARG={$FILTER_TYPE_ARG}"
+        
         val arguments: List<NamedNavArgument> = listOf(
             navArgument(MEDIA_ID_ARG) { type = NavType.LongType },
             navArgument(ALBUM_ID_ARG) { 
                 type = NavType.LongType
                 defaultValue = -1L 
+            },
+            navArgument(SORT_TYPE_ARG) {
+                type = NavType.StringType
+                defaultValue = "Date"
+            },
+            navArgument(ORDER_DESC_ARG) {
+                type = NavType.BoolType
+                defaultValue = true
+            },
+            navArgument(FILTER_TYPE_ARG) {
+                type = NavType.StringType
+                defaultValue = "All"
             }
         )
     }

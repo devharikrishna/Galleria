@@ -25,7 +25,8 @@ sealed class RecycleBinEvent {
 }
 @HiltViewModel
 class RecycleBinViewModel @Inject constructor(
-    private val repository: MediaRepository
+    private val repository: MediaRepository,
+    private val getMediaUseCase: com.irah.galleria.domain.usecase.GetMediaUseCase
 ) : ViewModel() {
     private val _state = MutableStateFlow(RecycleBinState())
     val state: StateFlow<RecycleBinState> = _state.asStateFlow()
@@ -34,7 +35,7 @@ class RecycleBinViewModel @Inject constructor(
     }
     private fun loadTrashedMedia() {
         viewModelScope.launch {
-            repository.getTrashedMedia().collect { mediaList ->
+            getMediaUseCase(albumId = -4L).collect { mediaList ->
                 _state.value = _state.value.copy(media = mediaList)
             }
         }

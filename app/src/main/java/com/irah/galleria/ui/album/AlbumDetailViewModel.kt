@@ -26,6 +26,7 @@ data class AlbumDetailState(
 )
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
+    private val getMediaUseCase: com.irah.galleria.domain.usecase.GetMediaUseCase,
     private val repository: MediaRepository,
     private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase,
     savedStateHandle: SavedStateHandle
@@ -48,28 +49,9 @@ class AlbumDetailViewModel @Inject constructor(
     }
     private fun loadMedia() {
         viewModelScope.launch {
-            when (albumId) {
-                -2L -> { // Favorites
-                     repository.getFavorites().collect { mediaList ->
-                         _state.value = _state.value.copy(media = mediaList)
-                     }
-                }
-                -3L -> { // Screenshots
-                    repository.getScreenshots().collect { mediaList ->
-                         _state.value = _state.value.copy(media = mediaList)
-                     }
-                }
-                -4L -> { // Trash
-                    repository.getTrashedMedia().collect { mediaList ->
-                         _state.value = _state.value.copy(media = mediaList)
-                     }
-                }
-                -1L -> { /* Invalid */ }
-                else -> {
-                    repository.getMediaByAlbumId(albumId).collect { mediaList ->
-                        _state.value = _state.value.copy(media = mediaList)
-                    }
-                }
+            if (albumId == -1L) return@launch
+            getMediaUseCase(albumId = albumId).collect { mediaList ->
+                 _state.value = _state.value.copy(media = mediaList)
             }
         }
     }

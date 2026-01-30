@@ -366,8 +366,29 @@ fun GalleryScreen(
                     gridState = gridState,
                     staggeredGridState = staggeredGridState,
                     onMediaClick = { media ->
-                         navController.navigate(Screen.MediaViewer.route + "/${media.id}")
-                    },
+                    if (state.isSelectionMode) {
+                        viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
+                    } else {
+                        val sortType = when(state.mediaOrder) {
+                            is com.irah.galleria.domain.util.MediaOrder.Date -> "Date"
+                            is com.irah.galleria.domain.util.MediaOrder.Name -> "Name"
+                            is com.irah.galleria.domain.util.MediaOrder.Size -> "Size"
+                        }
+                        val orderDesc = state.mediaOrder.orderType is com.irah.galleria.domain.util.OrderType.Descending
+                        val filterType = when(state.filterType) {
+                            com.irah.galleria.domain.usecase.FilterType.Images -> "Images"
+                            com.irah.galleria.domain.usecase.FilterType.Videos -> "Videos"
+                            else -> "All"
+                        }
+                        navController.navigate(
+                            Screen.MediaViewer.route + "/${media.id}" +
+                            "?${Screen.MediaViewer.ALBUM_ID_ARG}=-1" +
+                            "&${Screen.MediaViewer.SORT_TYPE_ARG}=$sortType" +
+                            "&${Screen.MediaViewer.ORDER_DESC_ARG}=$orderDesc" +
+                            "&${Screen.MediaViewer.FILTER_TYPE_ARG}=$filterType"
+                        )
+                    }
+                },
                     onSelectionChange = { ids ->
                         viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
                     },
