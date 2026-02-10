@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -268,7 +269,7 @@ fun MediaViewerScreen(
                                 )
                             }
                         }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
+                            Icon(Icons.Default.Tune, contentDescription = "Edit", tint = Color.White)
                         }
                         IconButton(onClick = { 
                             val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
