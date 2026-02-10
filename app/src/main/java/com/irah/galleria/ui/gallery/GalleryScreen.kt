@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.imageLoader
+import com.irah.galleria.domain.model.Media
 import com.irah.galleria.domain.usecase.FilterType
 import com.irah.galleria.domain.util.MediaOrder
 import com.irah.galleria.domain.util.OrderType
@@ -149,7 +150,7 @@ fun GalleryScreen(
             }
         }
     }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
     com.irah.galleria.ui.theme.GlassScaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
@@ -167,7 +168,7 @@ fun GalleryScreen(
             }
             if (state.isSelectionMode) {
                 TopAppBar(
-                    title = { Text("${state.selectedMediaIds.size} Selected") },
+                    title = { Text("${state.selectedMediaIds.items.size} Selected") },
                     navigationIcon = {
                         IconButton(onClick = { viewModel.onEvent(GalleryEvent.ClearSelection) }) {
                             Icon(Icons.Default.Close, contentDescription = "Clear Selection")
@@ -267,7 +268,7 @@ fun GalleryScreen(
             }
             if (showAlbumSelectionSheet) {
                 com.irah.galleria.ui.gallery.components.AlbumSelectionSheet(
-                    albums = state.albums,
+                    albums = state.albums.items,
                     onAlbumSelected = { album ->
                         showAlbumSelectionSheet = false
                         val target = album.relativePath ?: "Pictures/${album.name}"
@@ -348,13 +349,53 @@ fun GalleryScreen(
                     start = 4.dp,
                     end = 4.dp
                 )
-                val mediaIds = remember(state.media) { state.media.map { it.id } }
+                remember(state.media) { state.media.items.map { it.id } }
                 val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
                 val staggeredGridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
                 val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
                 val density = androidx.compose.ui.platform.LocalDensity.current.density
                 val itemSizePx = remember(screenWidth, settings.galleryGridCount) {
-                     ((screenWidth / settings.galleryGridCount) * density).toInt()
+                     val spacing = 2 * density 
+                     ((screenWidth * density - (settings.galleryGridCount + 1) * spacing) / settings.galleryGridCount).toInt()
+                }
+
+                val onMediaClick = remember(state.isSelectionMode, state.mediaOrder, state.filterType, navController) {
+                    { media: Media ->
+                        if (state.isSelectionMode) {
+                            viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
+                        } else {
+                            val sortType = when(state.mediaOrder) {
+                                is MediaOrder.Date -> "Date"
+                                is MediaOrder.Name -> "Name"
+                                is MediaOrder.Size -> "Size"
+                            }
+                            val orderDesc = state.mediaOrder.orderType is OrderType.Descending
+                            val filterType = when(state.filterType) {
+                                FilterType.Images -> "Images"
+                                FilterType.Videos -> "Videos"
+                                else -> "All"
+                            }
+                            navController.navigate(
+                                Screen.MediaViewer.route + "/${media.id}" +
+                                "?${Screen.MediaViewer.ALBUM_ID_ARG}=-1" +
+                                "&${Screen.MediaViewer.SORT_TYPE_ARG}=$sortType" +
+                                "&${Screen.MediaViewer.ORDER_DESC_ARG}=$orderDesc" +
+                                "&${Screen.MediaViewer.FILTER_TYPE_ARG}=$filterType"
+                            )
+                        }
+                    }
+                }
+                
+                val onSelectionChange = remember(viewModel) {
+                    { ids: Set<Long> ->
+                        viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
+                    }
+                }
+
+                val onToggleSelection = remember(viewModel) {
+                    { id: Long ->
+                         viewModel.onEvent(GalleryEvent.ToggleSelection(id))
+                    }
                 }
 
                 com.irah.galleria.ui.gallery.components.GalleryGridContent(
@@ -365,36 +406,9 @@ fun GalleryScreen(
                     contentPadding = contentPadding,
                     gridState = gridState,
                     staggeredGridState = staggeredGridState,
-                    onMediaClick = { media ->
-                    if (state.isSelectionMode) {
-                        viewModel.onEvent(GalleryEvent.ToggleSelection(media.id))
-                    } else {
-                        val sortType = when(state.mediaOrder) {
-                            is com.irah.galleria.domain.util.MediaOrder.Date -> "Date"
-                            is com.irah.galleria.domain.util.MediaOrder.Name -> "Name"
-                            is com.irah.galleria.domain.util.MediaOrder.Size -> "Size"
-                        }
-                        val orderDesc = state.mediaOrder.orderType is com.irah.galleria.domain.util.OrderType.Descending
-                        val filterType = when(state.filterType) {
-                            com.irah.galleria.domain.usecase.FilterType.Images -> "Images"
-                            com.irah.galleria.domain.usecase.FilterType.Videos -> "Videos"
-                            else -> "All"
-                        }
-                        navController.navigate(
-                            Screen.MediaViewer.route + "/${media.id}" +
-                            "?${Screen.MediaViewer.ALBUM_ID_ARG}=-1" +
-                            "&${Screen.MediaViewer.SORT_TYPE_ARG}=$sortType" +
-                            "&${Screen.MediaViewer.ORDER_DESC_ARG}=$orderDesc" +
-                            "&${Screen.MediaViewer.FILTER_TYPE_ARG}=$filterType"
-                        )
-                    }
-                },
-                    onSelectionChange = { ids ->
-                        viewModel.onEvent(GalleryEvent.UpdateSelection(ids))
-                    },
-                    onToggleSelection = { id ->
-                        viewModel.onEvent(GalleryEvent.ToggleSelection(id))
-                    },
+                    onMediaClick = onMediaClick,
+                    onSelectionChange = onSelectionChange,
+                    onToggleSelection = onToggleSelection,
                     imageLoader = context.imageLoader,
                     itemSizePx = itemSizePx
                 )

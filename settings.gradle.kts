@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Galleria"
 include(":app")
+include(":baselineprofile")

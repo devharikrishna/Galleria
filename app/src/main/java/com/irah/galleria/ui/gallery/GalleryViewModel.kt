@@ -18,13 +18,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.core.net.toUri
 data class GalleryState(
-    val media: List<Media> = emptyList(),
-    val albums: List<com.irah.galleria.domain.model.Album> = emptyList(),
+    val media: com.irah.galleria.ui.util.ImmutableList<Media> = com.irah.galleria.ui.util.ImmutableList(emptyList()),
+    val albums: com.irah.galleria.ui.util.ImmutableList<com.irah.galleria.domain.model.Album> = com.irah.galleria.ui.util.ImmutableList(emptyList()),
     val isLoading: Boolean = false,
     val mediaOrder: MediaOrder = MediaOrder.Date(OrderType.Descending),
     val filterType: FilterType = FilterType.All,
     val isSelectionMode: Boolean = false,
-    val selectedMediaIds: Set<Long> = emptySet()
+    val selectedMediaIds: com.irah.galleria.ui.util.ImmutableSet<Long> = com.irah.galleria.ui.util.ImmutableSet(emptySet())
 )
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
@@ -46,7 +46,7 @@ class GalleryViewModel @Inject constructor(
     private fun loadAlbums() {
         viewModelScope.launch {
             getAlbumsUseCase().collect { albums ->
-                _state.value = _state.value.copy(albums = albums)
+                _state.value = _state.value.copy(albums = com.irah.galleria.ui.util.ImmutableList(albums))
             }
         }
     }
@@ -57,7 +57,7 @@ class GalleryViewModel @Inject constructor(
                 .catch { _state.value = _state.value.copy(isLoading = false) }
                 .collect { mediaList ->
                     _state.value = _state.value.copy(
-                        media = mediaList,
+                        media = com.irah.galleria.ui.util.ImmutableList(mediaList),
                         isLoading = false
                     )
                 }
@@ -79,27 +79,29 @@ class GalleryViewModel @Inject constructor(
                 loadMedia()
             }
             is GalleryEvent.ToggleSelection -> {
-                val currentIds = _state.value.selectedMediaIds.toMutableSet()
+                val currentIds = _state.value.selectedMediaIds.items.toMutableSet()
                 if (currentIds.contains(event.mediaId)) {
                     currentIds.remove(event.mediaId)
                 } else {
                     currentIds.add(event.mediaId)
                 }
+                val newIds = com.irah.galleria.ui.util.ImmutableSet(currentIds)
                 _state.value = _state.value.copy(
-                    selectedMediaIds = currentIds,
-                    isSelectionMode = currentIds.isNotEmpty()
+                    selectedMediaIds = newIds,
+                    isSelectionMode = newIds.isNotEmpty()
                 )
             }
             is GalleryEvent.ClearSelection -> {
                 _state.value = _state.value.copy(
-                    selectedMediaIds = emptySet(),
+                    selectedMediaIds = com.irah.galleria.ui.util.ImmutableSet(emptySet()),
                     isSelectionMode = false
                 )
             }
             is GalleryEvent.UpdateSelection -> {
+                 val newIds = com.irah.galleria.ui.util.ImmutableSet(event.selectedIds)
                 _state.value = _state.value.copy(
-                    selectedMediaIds = event.selectedIds,
-                    isSelectionMode = event.selectedIds.isNotEmpty()
+                    selectedMediaIds = newIds,
+                    isSelectionMode = newIds.isNotEmpty()
                 )
             }
         }
@@ -150,7 +152,11 @@ class GalleryViewModel @Inject constructor(
                 }
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
+            try {
+                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
+            } catch (e: Exception) {
+                // Ignore if no app to handle share
+            }
         }
     }
 

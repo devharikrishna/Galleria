@@ -55,18 +55,14 @@ fun MediaGridItem(
         ImageRequest.Builder(context)
             .data(media.uri)
             .size(itemSizePx)
-            .memoryCacheKey("${media.id}_$itemSizePx")
-            .diskCacheKey("${media.id}_$itemSizePx")
+            .scale(coil.size.Scale.FILL)
+            .precision(coil.size.Precision.EXACT)
             .allowHardware(true)
             .allowRgb565(true)
-            .crossfade(false)
+            .crossfade(true) // Enable crossfade for smoother loading
+            .dispatcher(kotlinx.coroutines.Dispatchers.IO)
             .build()
     }
-    
-    val painter = rememberAsyncImagePainter(
-        model = imageRequest,
-        filterQuality = FilterQuality.Low
-    )
 
     Box(
         modifier = containerModifier
@@ -78,10 +74,11 @@ fun MediaGridItem(
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
-        Image(
-            painter = painter,
+        coil.compose.AsyncImage(
+            model = imageRequest,
             contentDescription = media.name,
-            contentScale = ContentScale.Crop, 
+            contentScale = ContentScale.Crop,
+            filterQuality = FilterQuality.Low,
             modifier = Modifier.fillMaxSize()
         )
         if (isSelected) {
@@ -107,7 +104,7 @@ fun MediaGridItem(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(30.dp)
-            )
+                )
         }
     }
 }
