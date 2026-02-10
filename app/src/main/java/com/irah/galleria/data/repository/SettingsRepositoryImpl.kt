@@ -50,9 +50,9 @@ class SettingsRepositoryImpl @Inject constructor(
                 UiMode.valueOf(preferences[Keys.UI_MODE] ?: UiMode.LIQUID_GLASS.name)
             } catch (e: Exception) { UiMode.LIQUID_GLASS },
             galleryViewType = try {
-                GalleryViewType.valueOf(preferences[Keys.VIEW_TYPE] ?: GalleryViewType.GRID.name)
+                GalleryViewType.valueOf(preferences[Keys.VIEW_TYPE] ?: GalleryViewType.STAGGERED.name)
             } catch (e: Exception) { GalleryViewType.STAGGERED },
-            galleryGridCount = preferences[Keys.GALLERY_GRID_COUNT] ?: 3,
+            galleryGridCount = preferences[Keys.GALLERY_GRID_COUNT] ?: 2,
             albumGridCount = preferences[Keys.ALBUM_GRID_COUNT] ?: 3,
             showMediaCount = preferences[Keys.SHOW_MEDIA_COUNT] ?: true,
             animationsEnabled = preferences[Keys.ANIMATIONS_ENABLED] ?: true,
