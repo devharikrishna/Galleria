@@ -76,6 +76,7 @@ import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.irah.galleria.R
+import com.irah.galleria.domain.model.BackgroundAnimationType
 import com.irah.galleria.domain.model.GalleryViewType
 import com.irah.galleria.domain.model.ThemeMode
 import com.irah.galleria.domain.model.UiMode
@@ -109,6 +110,14 @@ fun SettingsScreen(
         topBar = {
             val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
             TopAppBar(
+                navigationIcon = {
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = com.irah.galleria.R.mipmap.ic_launcher),
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp).padding(start = 12.dp),
+                        tint = androidx.compose.ui.graphics.Color.Unspecified
+                    )
+                },
                 title = { Text("Settings") },
                 colors = if (uiMode == UiMode.LIQUID_GLASS) {
                     androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -247,17 +256,93 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ThemeChip(
-                            selected = currentUiMode == UiMode.MATERIAL,
-                            label = "Material",
-                            icon = Icons.Outlined.Android,
-                            onClick = { viewModel.setUiMode(UiMode.MATERIAL) }
-                        )
-                        ThemeChip(
                             selected = currentUiMode == UiMode.LIQUID_GLASS,
                             label = "Glassy",
                             icon = Icons.Outlined.AutoAwesome,
                             onClick = { viewModel.setUiMode(UiMode.LIQUID_GLASS) }
                         )
+                        ThemeChip(
+                            selected = currentUiMode == UiMode.MATERIAL,
+                            label = "Material",
+                            icon = Icons.Outlined.Android,
+                            onClick = { viewModel.setUiMode(UiMode.MATERIAL) }
+                        )
+                    }
+
+                    if (currentUiMode == UiMode.LIQUID_GLASS) {
+                        Text(
+                            "Background Style",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        val animations = BackgroundAnimationType.entries.toTypedArray()
+                        androidx.compose.foundation.lazy.LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        ) {
+                            items(animations.size) { index ->
+                                val type = animations[index]
+                                val isSelected = settings.blobAnimation == type
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.clickable { viewModel.setBlobAnimation(type) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(80.dp, 120.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .border(
+                                                width = if (isSelected) 3.dp else 1.dp,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha=0.5f),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                    ) {
+                                        // Preview
+                                        val isDark = com.irah.galleria.ui.theme.LocalIsDarkTheme.current
+                                        GlassSurface(
+                                            modifier = Modifier.fillMaxSize(),
+                                            border = false,
+                                            color = Color.Transparent
+                                        ) {
+                                            Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))) {
+                                                when(type) {
+                                                    BackgroundAnimationType.BLOB -> com.irah.galleria.ui.theme.AnimatedBlob(isDark)
+                                                    BackgroundAnimationType.WAVE -> com.irah.galleria.ui.theme.AnimatedWave(isDark)
+                                                    BackgroundAnimationType.GRADIENT -> com.irah.galleria.ui.theme.AnimatedGradient(isDark)
+                                                    BackgroundAnimationType.PARTICLES -> com.irah.galleria.ui.theme.AnimatedParticles(isDark)
+                                                    BackgroundAnimationType.MESH -> com.irah.galleria.ui.theme.AnimatedMesh(isDark)
+                                                }
+                                            }
+                                        }
+                                        if (isSelected) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(4.dp)
+                                                    .size(20.dp)
+                                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = type.name.lowercase().capitalize(),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
                     }
                     SettingsSwitch(
                         title = "Dynamic Color",

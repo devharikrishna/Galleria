@@ -47,6 +47,19 @@ fun GlassScaffold(
 ) {
     if (LocalUiMode.current == UiMode.LIQUID_GLASS) {
         val isDark = LocalIsDarkTheme.current
+        val currentAnimation = LocalBackgroundAnimation.current // Read current to default
+        // We need to pass the setting here. But GlassScaffold doesn't have access to Settings directly.
+        // Option 1: Pass settings to GlassScaffold.
+        // Option 2: Wrap GlassScaffold usage in MainActivity with the provider.
+        // Let's check MainActivity.
+        
+        // Actually, let's look at where GlassScaffold is used. 
+        // If we can't easily change the call sites, we might need a different approach.
+        // However, the cleanest way is to provide it at the root or have GlassScaffold receive the state.
+        
+        // Let's assume for now we will provide it at the root (MainActivity/App).
+        // So here we validly just use the composables.
+        
         Box(modifier = modifier.fillMaxSize()) {
             AnimatedLiquidBackground(isDark = isDark)
             Scaffold(
@@ -77,76 +90,17 @@ fun GlassScaffold(
         )
     }
 }
+val LocalBackgroundAnimation = staticCompositionLocalOf { com.irah.galleria.domain.model.BackgroundAnimationType.BLOB }
+
 @Composable
 fun AnimatedLiquidBackground(isDark: Boolean) {
-    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "liquid_bg")
-    val t1 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(13000, easing = androidx.compose.animation.core.LinearEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-        ), label = "t1"
-    )
-    val t2 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(17000, easing = androidx.compose.animation.core.LinearEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-        ), label = "t2"
-    )
-    val t3 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(23000, easing = androidx.compose.animation.core.LinearEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-        ), label = "t3"
-    )
-    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-        val baseColors = if (isDark) {
-            listOf(Color(0xFF020617), Color(0xFF0F172A), Color(0xFF1E293B))  
-        } else {
-            listOf(Color(0xFFF0F9FF), Color(0xFFE0F2FE), Color(0xFFBAE6FD))
-        }
-        drawRect(brush = Brush.verticalGradient(baseColors))
-        val blobColors = if (isDark) {
-            listOf(
-                Color(0xFF4F46E5).copy(alpha = 0.5f),
-                Color(0xFFEC4899).copy(alpha = 0.4f),
-                Color(0xFF06B6D4).copy(alpha = 0.4f)
-            )
-        } else {
-             listOf(
-                Color(0xFFA5F3FC).copy(alpha = 0.7f),
-                Color(0xFFFBCFE8).copy(alpha = 0.6f),
-                Color(0xFFDDD6FE).copy(alpha = 0.7f)
-            )
-        }
-        drawCircle(
-            brush = Brush.radialGradient(colors = listOf(blobColors[0], Color.Transparent)),
-            radius = w * 0.9f,
-            center = androidx.compose.ui.geometry.Offset(
-                x = w * -0.3f + (w * 1.6f * t1),
-                y = h * -0.2f + (h * 1.4f * t2)
-            )
-        )
-        drawCircle(
-            brush = Brush.radialGradient(colors = listOf(blobColors[1], Color.Transparent)),
-            radius = w * 0.85f,
-            center = androidx.compose.ui.geometry.Offset(
-                x = w * 1.3f - (w * 1.6f * t2),
-                y = h * 1.2f - (h * 1.4f * t3)
-            )
-        )
-         drawCircle(
-            brush = Brush.radialGradient(colors = listOf(blobColors[2], Color.Transparent)),
-            radius = w * 0.8f,
-            center = androidx.compose.ui.geometry.Offset(
-                x = w * -0.2f + (w * 1.5f * t3),
-                y = h * 1.2f - (h * 1.4f * t1)
-            )
-        )
+    val animationType = LocalBackgroundAnimation.current
+    when(animationType) {
+        com.irah.galleria.domain.model.BackgroundAnimationType.BLOB -> AnimatedBlob(isDark)
+        com.irah.galleria.domain.model.BackgroundAnimationType.WAVE -> AnimatedWave(isDark)
+        com.irah.galleria.domain.model.BackgroundAnimationType.GRADIENT -> AnimatedGradient(isDark)
+        com.irah.galleria.domain.model.BackgroundAnimationType.PARTICLES -> AnimatedParticles(isDark)
+        com.irah.galleria.domain.model.BackgroundAnimationType.MESH -> AnimatedMesh(isDark)
     }
 }
 @Composable

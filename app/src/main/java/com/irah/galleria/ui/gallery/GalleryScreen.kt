@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -208,6 +209,14 @@ fun GalleryScreen(
                 )
             } else {
                 TopAppBar(
+                    navigationIcon = {
+                        Icon(
+                            painter = androidx.compose.ui.res.painterResource(id = com.irah.galleria.R.mipmap.ic_launcher),
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp).padding(start = 12.dp),
+                            tint = androidx.compose.ui.graphics.Color.Unspecified
+                        )
+                    },
                     title = { Text("Gallery") },
                     colors = normalTopBarColors,
                     actions = {

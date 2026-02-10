@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.irah.galleria.domain.model.AppSettings
 import com.irah.galleria.domain.model.GalleryViewType
 import com.irah.galleria.domain.model.ThemeMode
+import com.irah.galleria.domain.model.UiMode
 import com.irah.galleria.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +18,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 class SettingsRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : SettingsRepository {
     private val dataStore = context.dataStore
     private object Keys {
@@ -36,8 +37,9 @@ class SettingsRepositoryImpl @Inject constructor(
         val ALBUM_DETAIL_CORNER_RADIUS = intPreferencesKey("album_detail_corner_radius")
         val MAX_BRIGHTNESS = booleanPreferencesKey("max_brightness")
         val VIDEO_AUTOPLAY = booleanPreferencesKey("video_autoplay")
-        val UI_MODE = stringPreferencesKey("ui_mode")
+        val UI_MODE = stringPreferencesKey("ui_mode_v2")
         val TRASH_ENABLED = booleanPreferencesKey("trash_enabled")
+        val BLOB_ANIMATION = stringPreferencesKey("blob_animation")
     }
     override val settings: Flow<AppSettings> = dataStore.data.map { preferences ->
         AppSettings(
@@ -45,13 +47,13 @@ class SettingsRepositoryImpl @Inject constructor(
                 ThemeMode.valueOf(preferences[Keys.THEME_MODE] ?: ThemeMode.SYSTEM.name)
             } catch (e: Exception) { ThemeMode.SYSTEM },
             uiMode = try {
-                com.irah.galleria.domain.model.UiMode.valueOf(preferences[Keys.UI_MODE] ?: com.irah.galleria.domain.model.UiMode.MATERIAL.name)
-            } catch (e: Exception) { com.irah.galleria.domain.model.UiMode.MATERIAL },
+                UiMode.valueOf(preferences[Keys.UI_MODE] ?: UiMode.LIQUID_GLASS.name)
+            } catch (e: Exception) { UiMode.LIQUID_GLASS },
             galleryViewType = try {
                 GalleryViewType.valueOf(preferences[Keys.VIEW_TYPE] ?: GalleryViewType.GRID.name)
-            } catch (e: Exception) { GalleryViewType.GRID },
+            } catch (e: Exception) { GalleryViewType.STAGGERED },
             galleryGridCount = preferences[Keys.GALLERY_GRID_COUNT] ?: 3,
-            albumGridCount = preferences[Keys.ALBUM_GRID_COUNT] ?: 2,
+            albumGridCount = preferences[Keys.ALBUM_GRID_COUNT] ?: 3,
             showMediaCount = preferences[Keys.SHOW_MEDIA_COUNT] ?: true,
             animationsEnabled = preferences[Keys.ANIMATIONS_ENABLED] ?: true,
             galleryCornerRadius = preferences[Keys.GALLERY_CORNER_RADIUS] ?: 12,
@@ -59,13 +61,15 @@ class SettingsRepositoryImpl @Inject constructor(
             accentColor = preferences[Keys.ACCENT_COLOR] ?: 0xFF6650a4L,
             useDynamicColor = preferences[Keys.USE_DYNAMIC_COLOR] ?: true,
             albumDetailViewType = try {
-                GalleryViewType.valueOf(preferences[Keys.ALBUM_DETAIL_VIEW_TYPE] ?: GalleryViewType.GRID.name)
-            } catch (e: Exception) { GalleryViewType.GRID },
-            albumDetailGridCount = preferences[Keys.ALBUM_DETAIL_GRID_COUNT] ?: 3,
+                GalleryViewType.valueOf(preferences[Keys.ALBUM_DETAIL_VIEW_TYPE] ?: GalleryViewType.STAGGERED.name)
+            } catch (e: Exception) { GalleryViewType.STAGGERED },
+            albumDetailGridCount = preferences[Keys.ALBUM_DETAIL_GRID_COUNT] ?: 2,
             albumDetailCornerRadius = preferences[Keys.ALBUM_DETAIL_CORNER_RADIUS] ?: 12,
             maxBrightness = preferences[Keys.MAX_BRIGHTNESS] ?: false,
-            videoAutoplay = preferences[Keys.VIDEO_AUTOPLAY] ?: false,
-            trashEnabled = preferences[Keys.TRASH_ENABLED] ?: true
+            trashEnabled = preferences[Keys.TRASH_ENABLED] ?: true,
+            blobAnimation = try {
+                com.irah.galleria.domain.model.BackgroundAnimationType.valueOf(preferences[Keys.BLOB_ANIMATION] ?: com.irah.galleria.domain.model.BackgroundAnimationType.WAVE.name)
+            } catch (e: Exception) { com.irah.galleria.domain.model.BackgroundAnimationType.WAVE }
         )
     }
     override suspend fun setThemeMode(mode: ThemeMode) {
@@ -118,5 +122,8 @@ class SettingsRepositoryImpl @Inject constructor(
     }
     override suspend fun setTrashEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.TRASH_ENABLED] = enabled }
+    }
+    override suspend fun setBlobAnimation(type: com.irah.galleria.domain.model.BackgroundAnimationType) {
+        dataStore.edit { it[Keys.BLOB_ANIMATION] = type.name }
     }
 }

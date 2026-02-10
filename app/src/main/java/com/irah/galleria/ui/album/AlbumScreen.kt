@@ -78,6 +78,14 @@ fun AlbumScreen(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = com.irah.galleria.R.mipmap.ic_launcher),
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp).padding(start = 12.dp),
+                        tint = androidx.compose.ui.graphics.Color.Unspecified
+                    )
+                },
                 title = { Text("Albums") },
                 colors = if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
                     TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)

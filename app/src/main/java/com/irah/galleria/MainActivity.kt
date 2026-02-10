@@ -25,7 +25,8 @@ class MainActivity : ComponentActivity() {
                 themeMode = settings.themeMode,
                 uiMode = settings.uiMode,
                 useDynamicColor = settings.useDynamicColor,
-                accentColor = settings.accentColor
+                accentColor = settings.accentColor,
+                blobAnimation = settings.blobAnimation
             ) {
                 PermissionWrapper {
                     MainScreen()

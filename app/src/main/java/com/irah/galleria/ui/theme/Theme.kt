@@ -27,6 +27,7 @@ fun GalleriaTheme(
     uiMode: com.irah.galleria.domain.model.UiMode = com.irah.galleria.domain.model.UiMode.MATERIAL,
     useDynamicColor: Boolean = true,
     accentColor: Long = 0xFF6650a4,
+    blobAnimation: com.irah.galleria.domain.model.BackgroundAnimationType = com.irah.galleria.domain.model.BackgroundAnimationType.BLOB,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
@@ -41,8 +42,8 @@ fun GalleriaTheme(
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             } catch (e: Exception) {
                 val primary = androidx.compose.ui.graphics.Color(accentColor.toInt())
-                val secondary = primary.copy(alpha = 0.8f) 
-                val tertiary = androidx.compose.ui.graphics.Color.Gray 
+                val secondary = primary.copy(alpha = 0.8f)
+                val tertiary = androidx.compose.ui.graphics.Color.Gray
                 if (darkTheme) darkColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
                 else lightColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
             }
@@ -51,10 +52,10 @@ fun GalleriaTheme(
             val primary = try {
                 androidx.compose.ui.graphics.Color(accentColor.toInt())
             } catch (e: Exception) {
-                androidx.compose.ui.graphics.Color(0xFF6650a4)  
+                androidx.compose.ui.graphics.Color(0xFF6650a4)
             }
-            val secondary = primary.copy(alpha = 0.8f) 
-            val tertiary = androidx.compose.ui.graphics.Color.Gray 
+            val secondary = primary.copy(alpha = 0.8f)
+            val tertiary = androidx.compose.ui.graphics.Color.Gray
             if (darkTheme) {
                 darkColorScheme(primary = primary, secondary = secondary, tertiary = tertiary)
             } else {
@@ -62,6 +63,7 @@ fun GalleriaTheme(
             }
         }
     }
+
     val view = androidx.compose.ui.platform.LocalView.current
     if (!view.isInEditMode) {
         androidx.compose.runtime.SideEffect {
@@ -70,9 +72,11 @@ fun GalleriaTheme(
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
+    
     androidx.compose.runtime.CompositionLocalProvider(
         LocalUiMode provides uiMode,
-        LocalIsDarkTheme provides darkTheme
+        LocalIsDarkTheme provides darkTheme,
+        LocalBackgroundAnimation provides blobAnimation
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

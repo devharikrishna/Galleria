@@ -9,23 +9,27 @@ enum class GalleryViewType {
 enum class UiMode {
     MATERIAL, LIQUID_GLASS
 }
+enum class BackgroundAnimationType {
+     WAVE, BLOB, GRADIENT, PARTICLES, MESH
+}
 @Immutable
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val uiMode: UiMode = UiMode.MATERIAL,
-    val galleryViewType: GalleryViewType = GalleryViewType.GRID,
+    val uiMode: UiMode = UiMode.LIQUID_GLASS,
+    val galleryViewType: GalleryViewType = GalleryViewType.STAGGERED,
     val galleryGridCount: Int = 2,  
-    val albumGridCount: Int = 2,
+    val albumGridCount: Int = 3,
     val showMediaCount: Boolean = true,
     val animationsEnabled: Boolean = true,
     val galleryCornerRadius: Int = 12,
     val albumCornerRadius: Int = 12,
     val accentColor: Long = 0xFF6650a4L,  
     val useDynamicColor: Boolean = true,
-    val albumDetailViewType: GalleryViewType = GalleryViewType.GRID,
-    val albumDetailGridCount: Int = 3,
+    val albumDetailViewType: GalleryViewType = GalleryViewType.STAGGERED,
+    val albumDetailGridCount: Int = 2,
     val albumDetailCornerRadius: Int = 12,
     val maxBrightness: Boolean = false,
     val videoAutoplay: Boolean = false,
-    val trashEnabled: Boolean = true
+    val trashEnabled: Boolean = true,
+    val blobAnimation: BackgroundAnimationType = BackgroundAnimationType.WAVE
 )

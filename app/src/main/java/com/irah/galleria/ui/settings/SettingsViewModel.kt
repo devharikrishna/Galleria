@@ -70,4 +70,7 @@ class SettingsViewModel @Inject constructor(
     fun setTrashEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setTrashEnabled(enabled) }
     }
+    fun setBlobAnimation(type: com.irah.galleria.domain.model.BackgroundAnimationType) {
+        viewModelScope.launch { settingsRepository.setBlobAnimation(type) }
+    }
 }

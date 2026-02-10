@@ -22,4 +22,5 @@ interface SettingsRepository {
     suspend fun setMaxBrightness(enabled: Boolean)
     suspend fun setVideoAutoplay(enabled: Boolean)
     suspend fun setTrashEnabled(enabled: Boolean)
+    suspend fun setBlobAnimation(type: com.irah.galleria.domain.model.BackgroundAnimationType)
 }
