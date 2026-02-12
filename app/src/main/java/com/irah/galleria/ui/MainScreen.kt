@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import com.irah.galleria.ui.theme.GlassScaffold
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +28,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -35,6 +42,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.irah.galleria.ui.album.AlbumDetailScreen
 import com.irah.galleria.ui.album.AlbumScreen
+import com.irah.galleria.ui.editor.EditorScreen
 import com.irah.galleria.ui.gallery.GalleryScreen
 import com.irah.galleria.ui.mediaviewer.MediaViewerScreen
 import com.irah.galleria.ui.navigation.Screen
@@ -77,7 +85,8 @@ fun MainScreen() {
     )
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     CompositionLocalProvider(LocalBottomBarVisibility provides bottomBarVisibility) {
-        Scaffold(
+        GlassScaffold(
+            contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
             bottomBar = {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
@@ -93,11 +102,11 @@ fun MainScreen() {
                              items.forEach { screen ->
                                 val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                                 NavigationBarItem(
-                                    icon = { 
+                                    icon = {
                                         Icon(
-                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon, 
+                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
                                             contentDescription = screen.title
-                                        ) 
+                                        )
                                     },
                                     label = { Text(screen.title) },
                                     selected = selected,
@@ -125,11 +134,11 @@ fun MainScreen() {
                             items.forEach { screen ->
                                 val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                                 NavigationBarItem(
-                                    icon = { 
+                                    icon = {
                                         Icon(
-                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon, 
+                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
                                             contentDescription = screen.title
-                                        ) 
+                                        )
                                     },
                                     label = { Text(screen.title) },
                                     selected = selected,
@@ -147,12 +156,14 @@ fun MainScreen() {
                         }
                     }
                 }
-            }
-        ) { _ ->
+                }
+            ) { innerPadding ->
             NavHost(
                 navController = navController,
                 startDestination = Screen.Gallery.route,
                 modifier = Modifier
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
             ) {
                 composable(Screen.Gallery.route) {
                     GalleryScreen(navController = navController)
@@ -182,7 +193,7 @@ fun MainScreen() {
                     route = Screen.Editor.routeWithArgs,
                     arguments = Screen.Editor.arguments
                 ) {
-                    com.irah.galleria.ui.editor.EditorScreen(navController = navController)
+                    EditorScreen(navController = navController)
                 }
             }
         }

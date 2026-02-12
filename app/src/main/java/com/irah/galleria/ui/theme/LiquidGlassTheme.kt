@@ -1,9 +1,4 @@
 package com.irah.galleria.ui.theme
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -24,12 +19,14 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.irah.galleria.domain.model.UiMode
+
 val LocalUiMode = staticCompositionLocalOf { UiMode.MATERIAL }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,19 +44,6 @@ fun GlassScaffold(
 ) {
     if (LocalUiMode.current == UiMode.LIQUID_GLASS) {
         val isDark = LocalIsDarkTheme.current
-        val currentAnimation = LocalBackgroundAnimation.current // Read current to default
-        // We need to pass the setting here. But GlassScaffold doesn't have access to Settings directly.
-        // Option 1: Pass settings to GlassScaffold.
-        // Option 2: Wrap GlassScaffold usage in MainActivity with the provider.
-        // Let's check MainActivity.
-        
-        // Actually, let's look at where GlassScaffold is used. 
-        // If we can't easily change the call sites, we might need a different approach.
-        // However, the cleanest way is to provide it at the root or have GlassScaffold receive the state.
-        
-        // Let's assume for now we will provide it at the root (MainActivity/App).
-        // So here we validly just use the composables.
-        
         Box(modifier = modifier.fillMaxSize()) {
             AnimatedLiquidBackground(isDark = isDark)
             Scaffold(
@@ -182,9 +166,9 @@ fun GlassNavigationBar(
     if (LocalUiMode.current == UiMode.LIQUID_GLASS) {
         val isDark = LocalIsDarkTheme.current
         val glassColor = if (isDark) {
-            Color(0xFF0F172A).copy(alpha = 0.85f)
+            Color(0xFF0F172A).copy(alpha = 0.70f)
         } else {
-            Color(0xFFF1F5F9).copy(alpha = 0.85f)
+            Color(0xFFF1F5F9).copy(alpha = 0.70f)
         }
         val borderColor = if (isDark) {
             Color.White.copy(alpha = 0.1f)
@@ -195,10 +179,11 @@ fun GlassNavigationBar(
              color = glassColor,
              contentColor = contentColor,
              tonalElevation = 0.dp,
-             modifier = modifier.border(
+             modifier = modifier
+                 .border(
                  width = 1.dp,
                  color = borderColor,
-                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp) 
+                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
              ),
              shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
         ) {

@@ -87,7 +87,6 @@ fun PermissionWrapper(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .size(96.dp)
-                            .clip(CircleShape)
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(
@@ -101,14 +100,14 @@ fun PermissionWrapper(
                     Text(
                         text = "To display your photos and videos, Galleria needs access to your media files.",
                         style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
+                        textAlign = TextAlign.Start,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Your media stays safe on your device.",
                         style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
+                        textAlign = TextAlign.Start,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(48.dp))

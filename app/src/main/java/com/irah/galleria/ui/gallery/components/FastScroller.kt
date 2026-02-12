@@ -79,11 +79,23 @@ fun FastScroller(
         // Calculate scroll progress from grid state
         val scrollProgress by remember(gridState, staggeredGridState, itemCount) {
             derivedStateOf {
-                if (itemCount == 0) 0f else {
-                    val firstVisibleIndex = gridState?.firstVisibleItemIndex 
-                        ?: staggeredGridState?.firstVisibleItemIndex 
-                        ?: 0
-                    firstVisibleIndex.toFloat() / itemCount.toFloat()
+                if (itemCount == 0) {
+                    0f
+                } else {
+                    val canScrollForward = gridState?.canScrollForward ?: staggeredGridState?.canScrollForward ?: false
+                    
+                    if (!canScrollForward) {
+                        1f
+                    } else {
+                        val firstVisibleIndex = (gridState?.firstVisibleItemIndex ?: staggeredGridState?.firstVisibleItemIndex ?: 0).toFloat()
+                        
+                        val visibleCount = (gridState?.layoutInfo?.visibleItemsInfo?.size 
+                            ?: staggeredGridState?.layoutInfo?.visibleItemsInfo?.size 
+                            ?: 0)
+                        
+                        val maxScrollIndex = (itemCount - visibleCount).coerceAtLeast(1).toFloat()
+                        (firstVisibleIndex / maxScrollIndex).coerceIn(0f, 1f)
+                    }
                 }
             }
         }
