@@ -84,6 +84,8 @@ import com.irah.galleria.ui.LocalBottomBarVisibility
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.theme.GlassScaffold
 import com.irah.galleria.ui.theme.GlassSurface
+import java.util.Locale
+import java.util.Locale.getDefault
 import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -299,7 +301,6 @@ fun SettingsScreen(
                                                 shape = RoundedCornerShape(12.dp)
                                             )
                                     ) {
-                                        // Preview
                                         val isDark = com.irah.galleria.ui.theme.LocalIsDarkTheme.current
                                         GlassSurface(
                                             modifier = Modifier.fillMaxSize(),
@@ -336,7 +337,9 @@ fun SettingsScreen(
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = type.name.lowercase().capitalize(),
+                                        text = type.name.lowercase().replaceFirstChar {
+                                            if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString()
+                                        },
                                         style = MaterialTheme.typography.labelMedium,
                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
@@ -370,6 +373,7 @@ fun SettingsScreen(
                             viewModel.setGalleryViewType(if (it) GalleryViewType.STAGGERED else GalleryViewType.GRID)
                         }
                     )
+
                     SettingsSlider(
                         title = "Items per Row",
                         value = settings.galleryGridCount.toFloat(),
@@ -378,6 +382,7 @@ fun SettingsScreen(
                         icon = Icons.Outlined.GridOn,
                         onValueChange = { viewModel.setGalleryGridCount(it.roundToInt()) }
                     )
+
                     SettingsSlider(
                         title = "Corner Radius",
                         value = settings.galleryCornerRadius.toFloat(),
@@ -434,7 +439,7 @@ fun SettingsScreen(
                         icon = Icons.Outlined.GridOn,
                         onValueChange = { viewModel.setAlbumDetailGridCount(it.roundToInt()) }
                     )
-                    SettingsSlider(
+                     SettingsSlider(
                         title = "Corner Radius",
                         value = settings.albumDetailCornerRadius.toFloat(),
                         range = 0f..32f,

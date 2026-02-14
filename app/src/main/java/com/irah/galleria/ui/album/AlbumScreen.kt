@@ -109,7 +109,6 @@ fun AlbumScreen(
                         bottom = innerPadding.calculateBottomPadding() + 80.dp  
                     ),
                 ) {
-                    // Smart Albums Header
                     if (state.smartAlbums.isNotEmpty()) {
                         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(settings.albumGridCount) }) {
                             Row(
@@ -174,9 +173,9 @@ fun SmartAlbumItem(
             .padding(8.dp)
     ) {
         val icon = when(album.id) {
-            -2L -> Icons.Outlined.FavoriteBorder // Favorites
-            -3L -> Icons.Outlined.Smartphone // Screenshots
-            -4L -> Icons.Outlined.AutoDelete // Recycle Bin (or Delete)
+            -2L -> Icons.Outlined.FavoriteBorder
+            -3L -> Icons.Outlined.Smartphone
+            -4L -> Icons.Outlined.AutoDelete
             else -> Icons.Outlined.Folder
         }
         val tint = MaterialTheme.colorScheme.primary

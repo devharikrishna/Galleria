@@ -1,5 +1,6 @@
 package com.irah.galleria.ui.mediaviewer
 import android.app.Activity
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,26 +22,23 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,67 +49,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.irah.galleria.domain.model.Media
 import com.irah.galleria.ui.common.VideoPlayer
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import com.irah.galleria.ui.settings.SettingsViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.core.net.toUri
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MediaViewerScreen(
     navController: NavController,
     viewModel: MediaViewerViewModel = hiltViewModel(),
-    settingsViewModel: com.irah.galleria.ui.settings.SettingsViewModel = hiltViewModel()
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
     val context = LocalContext.current
-    val window = (context as? Activity)?.window
-    val insetsController = remember(window) { 
-        window?.let { WindowCompat.getInsetsController(it, it.decorView) }
-    }
     var showControls by remember { mutableStateOf(true) }
     var showInfoSheet by remember { mutableStateOf(false) }
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-        }
-    }
-    LaunchedEffect(settings.maxBrightness) {
-        window?.let { win ->
-            val params = win.attributes
-            params.screenBrightness = if (settings.maxBrightness) 1.0f else android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-            win.attributes = params
-        }
-    }
-    DisposableEffect(Unit) {
-        onDispose {
-            window?.let { win ->
-                val params = win.attributes
-                params.screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                win.attributes = params
-            }
-        }
-    }
-    LaunchedEffect(showControls) {
-        if (showControls) {
-            insetsController?.show(WindowInsetsCompat.Type.systemBars())
+            Toast.makeText(context, "Media deleted", Toast.LENGTH_SHORT).show()
         } else {
-            insetsController?.hide(WindowInsetsCompat.Type.systemBars())
-            insetsController?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            Toast.makeText(context, "Media delete failed", Toast.LENGTH_SHORT).show()
         }
     }
-    LaunchedEffect(Unit) {
-    }
+
     if (!state.isLoading && state.mediaList.isNotEmpty()) {
         val pagerState = rememberPagerState(
             initialPage = state.initialIndex,
@@ -142,7 +112,7 @@ fun MediaViewerScreen(
             }
             val configuration = androidx.compose.ui.platform.LocalConfiguration.current
             val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-            
+
             AnimatedVisibility(
                 visible = showControls,
                 enter = fadeIn(),
@@ -153,9 +123,9 @@ fun MediaViewerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                             androidx.compose.ui.graphics.Brush.verticalGradient(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
                                 colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
-                             )
+                            )
                         )
                         .systemBarsPadding()
                         .padding(horizontal = 8.dp, vertical = 12.dp),
@@ -165,9 +135,9 @@ fun MediaViewerScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
-                    
+
                     if (isLandscape) {
-                         Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { viewModel.toggleFavorite(currentMedia) }) {
                                 Icon(
                                     if (currentMedia.isFavorite) Icons.Default.Favorite else Icons.Filled.FavoriteBorder,
@@ -197,7 +167,7 @@ fun MediaViewerScreen(
                             }) {
                                 Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
                             }
-                            IconButton(onClick = { 
+                            IconButton(onClick = {
                                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                     type = currentMedia.mimeType
                                     putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
@@ -216,7 +186,7 @@ fun MediaViewerScreen(
                             }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
                             }
-                         }
+                        }
                     }
                 }
             }
@@ -236,8 +206,7 @@ fun MediaViewerScreen(
                                     colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
                                 )
                             )
-                            .systemBarsPadding()
-                            .padding(16.dp),
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         IconButton(onClick = { viewModel.toggleFavorite(currentMedia) }) {
@@ -247,8 +216,8 @@ fun MediaViewerScreen(
                                 tint = if (currentMedia.isFavorite) Color.Red else Color.White
                             )
                         }
-                        IconButton(onClick = { 
-                            showInfoSheet = true 
+                        IconButton(onClick = {
+                            showInfoSheet = true
                         }) {
                             Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
                         }
@@ -271,7 +240,7 @@ fun MediaViewerScreen(
                         }) {
                             Icon(Icons.Default.Tune, contentDescription = "Edit", tint = Color.White)
                         }
-                        IconButton(onClick = { 
+                        IconButton(onClick = {
                             val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                 type = currentMedia.mimeType
                                 putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
@@ -304,7 +273,7 @@ fun MediaViewerScreen(
         }
     } else {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            LinearProgressIndicator()
         }
     }
 }
@@ -321,7 +290,7 @@ fun MediaPage(
             if (isSelected) {
                 VideoPlayer(
                     uri = media.uri.toUri(),
-                    isSelected = true,  
+                    isSelected = true,
                     controllerVisible = showControls,
                     onControllerVisibilityChanged = onVideoControlVisibilityChange
                 )
@@ -345,12 +314,12 @@ fun MediaPage(
                 )
             }
         } else {
-             val painter = rememberAsyncImagePainter(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(media.uri)
-                        .crossfade(true)
-                        .build()
-                )
+            val painter = rememberAsyncImagePainter(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(media.uri)
+                    .crossfade(true)
+                    .build()
+            )
             com.irah.galleria.ui.common.ZoomableImage(
                 painter = painter,
                 contentDescription = media.name,
@@ -380,9 +349,18 @@ fun InfoRow(label: String, value: String) {
 fun formatSize(size: Long): String {
     val kb = size / 1024.0
     val mb = kb / 1024.0
-    return if (mb > 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
+    return if (mb > 1) String.format(Locale.US,"%.2f MB", mb) else String.format(Locale.US,"%.2f KB", kb)
 }
 fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+private fun findActivity(context: android.content.Context): Activity? {
+    var ctx = context
+    while (ctx is android.content.ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }

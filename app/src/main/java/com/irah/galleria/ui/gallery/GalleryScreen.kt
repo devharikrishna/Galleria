@@ -130,21 +130,19 @@ fun GalleryScreen(
             override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
                 val delta = available.y
                 
-                // Reset accumulation if direction changes logic can be subtle, 
-                // but usually just adding to accumulator works if we clamp or reset on toggle.
-                // A simple approach:
+                
                 if ((delta > 0 && accumulatedScroll < 0) || (delta < 0 && accumulatedScroll > 0)) {
                     accumulatedScroll = 0f
                 }
                 
                 accumulatedScroll += delta
 
-                if (accumulatedScroll < -150) { // Scroll down (content moves up)
+                if (accumulatedScroll < -150) {
                     if (bottomBarVisibility.value) bottomBarVisibility.value = false
-                    accumulatedScroll = 0f // Reset after triggering
-                } else if (accumulatedScroll > 150) { // Scroll up (content moves down)
+                    accumulatedScroll = 0f
+                } else if (accumulatedScroll > 150) {
                     if (!bottomBarVisibility.value) bottomBarVisibility.value = true
-                    accumulatedScroll = 0f // Reset after triggering
+                    accumulatedScroll = 0f
                 }
                 
                 return super.onPreScroll(available, source)
