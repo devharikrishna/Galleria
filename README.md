@@ -84,4 +84,3 @@
 
 ---
 
-*Crafted with ❤️ using Jetpack Compose.*
