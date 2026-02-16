@@ -4,7 +4,7 @@
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-green?style=flat&logo=android)
 ![Android](https://img.shields.io/badge/Platform-Android%2015-blue?style=flat&logo=android)
 
-**Galleria1** is a simple Android gallery application built entirely with **Jetpack Compose(Material3)**. It combines stunning aesthetics with powerful media management features, offering a fluid and highly customizable user experience.
+**Galleria** is a simple Android gallery application built entirely with **Jetpack Compose(Material3)**. It combines stunning aesthetics with powerful media management features, offering a fluid and highly customizable user experience.
 
 ---
 
@@ -29,6 +29,12 @@
 
 ### ⚙️ Customization
 *   **Grid Control**: Adjustable grid count to suit your viewing preference.
+
+### 🎨 Feature-Rich Image Editor
+*   **Granular Light & Color**: Adjust Exposure, Brightness, Contrast, Highlights, Shadows, Vibrance, and more.
+*   **HSL Control**: Professional-grade manipulation of Hue, Saturation, and Luminance for individual color channels.
+*   **Detail Enhancement**: Tools for Clarity, Sharpening, and Denoise to perfect your shots.
+*   **Geometry Tools**: Crop, Rotate, Straighten, and Flip with an intuitive overlay.
 
 ---
 
