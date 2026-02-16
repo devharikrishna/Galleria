@@ -35,6 +35,7 @@
 *   **HSL Control**: Professional-grade manipulation of Hue, Saturation, and Luminance for individual color channels.
 *   **Detail Enhancement**: Tools for Clarity, Sharpening, and Denoise to perfect your shots.
 *   **Geometry Tools**: Crop, Rotate, Straighten, and Flip with an intuitive overlay.
+*   **Filters**: Filters with multiple scene and mood.
 
 ---
 
