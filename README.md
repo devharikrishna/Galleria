@@ -8,7 +8,23 @@
 
 ---
 
+
+## 📱 Screenshots
+
+<p align="center">
+  <img src="screenshots/gallery_grid.png" width="30%" alt="Gallery Grid" />
+  <img src="screenshots/album_view.png" width="30%" alt="Album View" />
+  <img src="screenshots/media_viewer.png" width="30%" alt="Media Viewer" />
+</p>
+<p align="center">
+  <img src="screenshots/settings_appearance.png" width="30%" alt="Settings Appearance" />
+  <img src="screenshots/settings_list.png" width="30%" alt="Settings List" />
+</p>
+
+---
+
 ## ✨ Key Features
+
 
 ### 🎨 Visual Excellence
 *   **Liquid Glass UI**: A stunning, modern interface featuring a frosted glass aesthetic with dynamic blurring and transparency.
