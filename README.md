@@ -31,7 +31,7 @@
 *   **Grid Control**: Adjustable grid count to suit your viewing preference.
 
 ### 🎨 Feature-Rich Image Editor
-*   **Granular Light & Color**: Adjust Exposure, Brightness, Contrast, Highlights, Shadows, Vibrance, and more.
+*   **Enhancement**: Auto enhancement option with highly customizable Exposure, Brightness, Contrast, Highlights, Shadows, Vibrance, and more.
 *   **HSL Control**: Professional-grade manipulation of Hue, Saturation, and Luminance for individual color channels.
 *   **Detail Enhancement**: Tools for Clarity, Sharpening, and Denoise to perfect your shots.
 *   **Geometry Tools**: Crop, Rotate, Straighten, and Flip with an intuitive overlay.
