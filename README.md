@@ -16,7 +16,7 @@
 *   **Dynamic Theming**: Supports Material You (Dynamic Color) and custom accent palettes.
 *   **Staggered Masonry Grid**: Beautifully displays images of varying aspect ratios.
 
-### 🎨 Feature-Rich Image Editor
+### 🪄 Feature-Rich Image Editor
 *   **Enhancement**: Auto enhancement option with highly customizable Exposure, Brightness, Contrast, Highlights, Shadows, Vibrance, and more.
 *   **HSL Control**: Professional-grade manipulation of Hue, Saturation, and Luminance for individual color channels.
 *   **Detail Enhancement**: Tools for Clarity, Sharpening, and Denoise to perfect your shots.
