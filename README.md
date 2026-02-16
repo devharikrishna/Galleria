@@ -16,6 +16,13 @@
 *   **Dynamic Theming**: Supports Material You (Dynamic Color) and custom accent palettes.
 *   **Staggered Masonry Grid**: Beautifully displays images of varying aspect ratios.
 
+### 🎨 Feature-Rich Image Editor
+*   **Enhancement**: Auto enhancement option with highly customizable Exposure, Brightness, Contrast, Highlights, Shadows, Vibrance, and more.
+*   **HSL Control**: Professional-grade manipulation of Hue, Saturation, and Luminance for individual color channels.
+*   **Detail Enhancement**: Tools for Clarity, Sharpening, and Denoise to perfect your shots.
+*   **Geometry Tools**: Crop, Rotate, Straighten, and Flip with an intuitive overlay.
+*   **Filters**: Filters with multiple scene and mood.
+
 ### 🎬 Advanced Media Playback
 *   **Custom Video Engine**: Built on **Media3 ExoPlayer** for seamless 4K playback.
 *   **Gesture Controls**: Swipe to adjust brightness and volume; double-tap to seek.
@@ -29,13 +36,6 @@
 
 ### ⚙️ Customization
 *   **Grid Control**: Adjustable grid count to suit your viewing preference.
-
-### 🎨 Feature-Rich Image Editor
-*   **Enhancement**: Auto enhancement option with highly customizable Exposure, Brightness, Contrast, Highlights, Shadows, Vibrance, and more.
-*   **HSL Control**: Professional-grade manipulation of Hue, Saturation, and Luminance for individual color channels.
-*   **Detail Enhancement**: Tools for Clarity, Sharpening, and Denoise to perfect your shots.
-*   **Geometry Tools**: Crop, Rotate, Straighten, and Flip with an intuitive overlay.
-*   **Filters**: Filters with multiple scene and mood.
 
 ---
 
