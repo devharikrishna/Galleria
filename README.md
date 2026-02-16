@@ -12,13 +12,12 @@
 ## 📱 Screenshots
 
 <p align="center">
-  <img src="screenshots/gallery_grid.png" width="20%" alt="Gallery Grid" />
-  <img src="screenshots/album_view.png" width="20%" alt="Album View" />
-  <img src="screenshots/media_viewer.png" width="20%" alt="Media Viewer" />
+  <img src="screenshots/gallery_grid.png" width="25%" alt="Gallery Grid" />
+  <img src="screenshots/media_viewer.png" width="25%" alt="Media Viewer" />
 </p>
 <p align="center">
-  <img src="screenshots/settings_appearance.png" width="20%" alt="Settings Appearance" />
-  <img src="screenshots/settings_list.png" width="20%" alt="Settings List" />
+  <img src="screenshots/settings_appearance.png" width="25%" alt="Settings Appearance" />
+  <img src="screenshots/settings_list.png" width="25%" alt="Settings List" />
 </p>
 
 ---
