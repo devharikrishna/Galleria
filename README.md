@@ -11,7 +11,7 @@
 ## ✨ Key Features
 
 ### 🎨 Visual Excellence
-*   **Material and Glassy UI**: Standard and modern UI with Material3 and Glassy user interface.
+*   **Liquid Glass UI**: A stunning, modern interface featuring a frosted glass aesthetic with dynamic blurring and transparency.
 *   **Immersive Viewer**: Edge-to-edge media viewing with gesture-based zoom, pan, and dismiss.
 *   **Dynamic Theming**: Supports Material You (Dynamic Color) and custom accent palettes.
 *   **Staggered Masonry Grid**: Beautifully displays images of varying aspect ratios.
@@ -22,10 +22,13 @@
 *   **Smooth Transitions**: Shared element transitions and gesture-driven animations.
 
 ### 🗂️ Powerful Management
-*   **Drag Select**: Intuitive multi-selection by dragging across the grid.
-*   **Album Management**: Create, rename, and organize albums effortlessly.
-*   **Smart Moving**: Move or copy media between albums with scoped storage compliance.
+*   **Smart Albums**: Automatically organizes **Favorites**, **Screenshots**, and **Recycle Bin** for quick access.
+*   **Enhanced Selection**: 
+    *   **Drag Select**: Intuitive multi-selection by dragging across the grid.
 *   **Recycle Bin**: Safety net for deleted items with restore capability.
+
+### ⚙️ Customization
+*   **Grid Control**: Adjustable grid count to suit your viewing preference.
 
 ---
 
