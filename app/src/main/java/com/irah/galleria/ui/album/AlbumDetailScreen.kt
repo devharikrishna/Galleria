@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
@@ -33,6 +34,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.imageLoader
@@ -119,45 +123,8 @@ fun AlbumDetailScreen(
                     },
                     colors = topBarColors,
                     actions = {
-                        if (state.isTrash) {
-                             IconButton(onClick = { 
-                                 viewModel.restoreSelectedMedia { intentSender ->
-                                     permissionLauncher.launch(
-                                         IntentSenderRequest.Builder(intentSender).build()
-                                     )
-                                 }
-                             }) {
-                                 Icon(Icons.Filled.Refresh, contentDescription = "Restore")
-                             }
-                        } else {
-                            IconButton(onClick = { viewModel.favoriteSelectedMedia() }) {
-                                Icon(Icons.Filled.FavoriteBorder, contentDescription = "Favorite")
-                            }
-                        }
-
-                        IconButton(onClick = { 
-                            isCopyOperation = false
-                            showAlbumSelectionSheet = true 
-                        }) {
-                            Icon(Icons.Filled.Folder, contentDescription = "Move to Album")
-                        }
-                        IconButton(onClick = { 
-                            isCopyOperation = true
-                            showAlbumSelectionSheet = true 
-                        }) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy to Album")
-                        }
-                        IconButton(onClick = { viewModel.shareSelectedMedia(navController.context) }) {
-                            Icon(Icons.Filled.Share, contentDescription = "Share")
-                        }
-                        IconButton(onClick = { 
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                                performDelete()
-                            } else {
-                                showDeleteDialog = true 
-                            }
-                        }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                        IconButton(onClick = { viewModel.onEvent(AlbumDetailEvent.SelectAll) }) {
+                            Icon(Icons.Default.DoneAll, contentDescription = "Select All")
                         }
                     }
                 )
@@ -312,7 +279,58 @@ fun AlbumDetailScreen(
                 itemSizePx = itemSizePx
             )
         }
+        
+        val operationState by viewModel.operationState.collectAsState(initial = com.irah.galleria.domain.model.MediaOperationState.Idle)
+            
+        com.irah.galleria.ui.common.SelectionActionMenu(
+            visible = state.isSelectionMode && operationState !is com.irah.galleria.domain.model.MediaOperationState.Running,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (operationState is com.irah.galleria.domain.model.MediaOperationState.Running) 80.dp else 16.dp),
+            isTrash = state.isTrash,
+            onShare = { viewModel.shareSelectedMedia(navController.context) },
+            onCopy = {
+                isCopyOperation = true
+                showAlbumSelectionSheet = true
+            },
+            onMove = {
+                isCopyOperation = false
+                showAlbumSelectionSheet = true
+            },
+            onDelete = {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    performDelete()
+                } else {
+                    showDeleteDialog = true
+                }
+            },
+            onFavorite = { viewModel.favoriteSelectedMedia() },
+            onRestore = {
+                 viewModel.restoreSelectedMedia { intentSender ->
+                     permissionLauncher.launch(
+                         androidx.activity.result.IntentSenderRequest.Builder(intentSender).build()
+                     )
+                 }
+            }
+        )
+            
+        androidx.compose.animation.AnimatedVisibility(
+            visible = operationState is com.irah.galleria.domain.model.MediaOperationState.Running,
+            enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp) 
+                .zIndex(15f)
+        ) {
+            if (operationState is com.irah.galleria.domain.model.MediaOperationState.Running) {
+                 com.irah.galleria.ui.common.OperationProgressCard(
+                    state = operationState as com.irah.galleria.domain.model.MediaOperationState.Running
+                )
+            }
+        }
+        }
     }
 }
-}
+
 

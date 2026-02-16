@@ -3,6 +3,7 @@ import com.irah.galleria.domain.model.Album
 import com.irah.galleria.domain.model.Media
 import kotlinx.coroutines.flow.Flow
 interface MediaRepository {
+    val operationState: Flow<com.irah.galleria.domain.model.MediaOperationState>
     fun getMedia(): Flow<List<Media>>
     fun getAlbums(): Flow<List<Album>>
     fun getMediaByAlbumId(albumId: Long): Flow<List<Media>>

@@ -33,6 +33,7 @@ class AlbumDetailViewModel @Inject constructor(
 ) : ViewModel() {
     private val _state = MutableStateFlow(AlbumDetailState())
     val state: StateFlow<AlbumDetailState> = _state.asStateFlow()
+    val operationState = repository.operationState
     private val albumId: Long = savedStateHandle[Screen.AlbumDetail.ALBUM_ID_ARG] ?: -1L
     private val albumName: String = savedStateHandle[Screen.AlbumDetail.ALBUM_NAME_ARG] ?: "Album"
 
@@ -79,6 +80,21 @@ class AlbumDetailViewModel @Inject constructor(
                 _state.value = _state.value.copy(
                     selectedMediaIds = event.selectedIds,
                     isSelectionMode = event.selectedIds.isNotEmpty()
+                )
+            }
+            is AlbumDetailEvent.SelectAll -> {
+                val allMediaIds = _state.value.media.map { it.id }.toSet()
+                val currentSelectedIds = _state.value.selectedMediaIds
+                
+                val newSelection = if (currentSelectedIds.containsAll(allMediaIds)) {
+                     emptySet()
+                } else {
+                     allMediaIds
+                }
+                
+                _state.value = _state.value.copy(
+                    selectedMediaIds = newSelection,
+                    isSelectionMode = newSelection.isNotEmpty()
                 )
             }
         }
@@ -168,6 +184,7 @@ sealed class AlbumDetailEvent {
     data class ToggleSelection(val mediaId: Long) : AlbumDetailEvent()
     data class UpdateSelection(val selectedIds: Set<Long>) : AlbumDetailEvent()
     object ClearSelection : AlbumDetailEvent()
+    object SelectAll : AlbumDetailEvent()
 }
 
 sealed class AlbumDetailUiEvent {

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -61,6 +63,8 @@ import com.irah.galleria.domain.util.OrderType
 import com.irah.galleria.ui.gallery.components.MediaGridItem
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.gallery.GalleryUiEvent
+import com.irah.galleria.domain.model.MediaOperationState
+import com.irah.galleria.ui.common.OperationProgressCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryScreen(
@@ -69,6 +73,7 @@ fun GalleryScreen(
     settingsViewModel: com.irah.galleria.ui.settings.SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val operationState by viewModel.operationState.collectAsState(initial = MediaOperationState.Idle)
     val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
     androidx.activity.compose.BackHandler(enabled = state.isSelectionMode) {
         viewModel.onEvent(GalleryEvent.ClearSelection)
@@ -175,33 +180,8 @@ fun GalleryScreen(
                     },
                     colors = topBarColors,
                     actions = {
-
-                        IconButton(onClick = { viewModel.favoriteSelectedMedia() }) {
-                            Icon(Icons.Default.FavoriteBorder, contentDescription = "Favorite")
-                        }
-                        IconButton(onClick = { 
-                            isCopyOperation = false
-                            showAlbumSelectionSheet = true 
-                        }) {
-                            Icon(Icons.Default.Folder, contentDescription = "Move to Album")
-                        }
-                        IconButton(onClick = { 
-                            isCopyOperation = true
-                            showAlbumSelectionSheet = true 
-                        }) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy to Album")
-                        }
-                        IconButton(onClick = { viewModel.shareSelectedMedia(context) }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share")
-                        }
-                        IconButton(onClick = { 
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                                performDelete()
-                            } else {
-                                showDeleteDialog = true 
-                            }
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        IconButton(onClick = { viewModel.onEvent(GalleryEvent.SelectAll) }) {
+                            Icon(Icons.Default.DoneAll, contentDescription = "Select All")
                         }
                     }
                 )
@@ -273,6 +253,7 @@ fun GalleryScreen(
                     }
                 )
             }
+
             if (showAlbumSelectionSheet) {
                 com.irah.galleria.ui.gallery.components.AlbumSelectionSheet(
                     albums = state.albums.items,
@@ -419,6 +400,50 @@ fun GalleryScreen(
                     imageLoader = context.imageLoader,
                     itemSizePx = itemSizePx
                 )
+            }
+            
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+            ) {
+                com.irah.galleria.ui.common.SelectionActionMenu(
+                    visible = state.isSelectionMode && operationState !is com.irah.galleria.domain.model.MediaOperationState.Running,
+                    modifier = Modifier
+                        .padding(bottom = if (operationState is com.irah.galleria.domain.model.MediaOperationState.Running) 80.dp else 16.dp),
+                    onShare = { viewModel.shareSelectedMedia(context) },
+                    onCopy = {
+                        isCopyOperation = true
+                        showAlbumSelectionSheet = true
+                    },
+                    onMove = {
+                        isCopyOperation = false
+                        showAlbumSelectionSheet = true
+                    },
+                    onDelete = {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                            performDelete()
+                        } else {
+                            showDeleteDialog = true
+                        }
+                    },
+                    onFavorite = { viewModel.favoriteSelectedMedia() }
+                )
+            }
+            
+            androidx.compose.animation.AnimatedVisibility(
+                visible = operationState is MediaOperationState.Running,
+                enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp) 
+                    .zIndex(15f) 
+            ) {
+                if (operationState is MediaOperationState.Running) {
+                     OperationProgressCard(
+                        state = operationState as MediaOperationState.Running
+                    )
+                }
             }
         }
     }

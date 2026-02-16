@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -155,6 +156,9 @@ fun RecycleBinScreen(
                             }
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete Forever")
+                        }
+                        IconButton(onClick = { viewModel.onEvent(RecycleBinEvent.SelectAll) }) {
+                             Icon(Icons.Default.DoneAll, contentDescription = "Select All")
                         }
                     } else if (state.media.isNotEmpty()) {
                          IconButton(onClick = { 

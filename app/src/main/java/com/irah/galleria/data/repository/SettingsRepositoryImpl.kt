@@ -52,7 +52,7 @@ class SettingsRepositoryImpl @Inject constructor(
             galleryViewType = try {
                 GalleryViewType.valueOf(preferences[Keys.VIEW_TYPE] ?: GalleryViewType.STAGGERED.name)
             } catch (e: Exception) { GalleryViewType.STAGGERED },
-            galleryGridCount = preferences[Keys.GALLERY_GRID_COUNT] ?: 2,
+            galleryGridCount = preferences[Keys.GALLERY_GRID_COUNT] ?: 3,
             albumGridCount = preferences[Keys.ALBUM_GRID_COUNT] ?: 3,
             showMediaCount = preferences[Keys.SHOW_MEDIA_COUNT] ?: true,
             animationsEnabled = preferences[Keys.ANIMATIONS_ENABLED] ?: true,
@@ -63,7 +63,7 @@ class SettingsRepositoryImpl @Inject constructor(
             albumDetailViewType = try {
                 GalleryViewType.valueOf(preferences[Keys.ALBUM_DETAIL_VIEW_TYPE] ?: GalleryViewType.STAGGERED.name)
             } catch (e: Exception) { GalleryViewType.STAGGERED },
-            albumDetailGridCount = preferences[Keys.ALBUM_DETAIL_GRID_COUNT] ?: 2,
+            albumDetailGridCount = preferences[Keys.ALBUM_DETAIL_GRID_COUNT] ?: 3,
             albumDetailCornerRadius = preferences[Keys.ALBUM_DETAIL_CORNER_RADIUS] ?: 12,
             maxBrightness = preferences[Keys.MAX_BRIGHTNESS] ?: false,
             trashEnabled = preferences[Keys.TRASH_ENABLED] ?: true,

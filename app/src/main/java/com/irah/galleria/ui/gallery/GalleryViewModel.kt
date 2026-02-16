@@ -16,7 +16,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.irah.galleria.ui.util.NotificationHelper
+import com.irah.galleria.domain.model.MediaOperationState
 import androidx.core.net.toUri
+
 data class GalleryState(
     val media: com.irah.galleria.ui.util.ImmutableList<Media> = com.irah.galleria.ui.util.ImmutableList(emptyList()),
     val albums: com.irah.galleria.ui.util.ImmutableList<com.irah.galleria.domain.model.Album> = com.irah.galleria.ui.util.ImmutableList(emptyList()),
@@ -26,15 +29,19 @@ data class GalleryState(
     val isSelectionMode: Boolean = false,
     val selectedMediaIds: com.irah.galleria.ui.util.ImmutableSet<Long> = com.irah.galleria.ui.util.ImmutableSet(emptySet())
 )
+
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val getMediaUseCase: GetMediaUseCase,
     private val getAlbumsUseCase: com.irah.galleria.domain.usecase.GetAlbumsUseCase,
     private val mediaRepository: com.irah.galleria.domain.repository.MediaRepository,
-    private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase
+    private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase,
+    private val notificationHelper: NotificationHelper
 ) : ViewModel() {
     private val _state = MutableStateFlow(GalleryState())
     val state: StateFlow<GalleryState> = _state.asStateFlow()
+
+    val operationState = mediaRepository.operationState
 
     private val _uiEvent = Channel<GalleryUiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
@@ -42,6 +49,15 @@ class GalleryViewModel @Inject constructor(
     init {
         loadMedia()
         loadAlbums()
+        viewModelScope.launch {
+            operationState.collect { state ->
+                when (state) {
+                    is MediaOperationState.Running -> notificationHelper.showProgress(state)
+                    is MediaOperationState.Completed -> notificationHelper.showCompletion(state)
+                    else -> notificationHelper.cancel() // Cancel idle or error for now, or handle specific error notification
+                }
+            }
+        }
     }
     private fun loadAlbums() {
         viewModelScope.launch {
@@ -95,6 +111,21 @@ class GalleryViewModel @Inject constructor(
                 _state.value = _state.value.copy(
                     selectedMediaIds = com.irah.galleria.ui.util.ImmutableSet(emptySet()),
                     isSelectionMode = false
+                )
+            }
+            is GalleryEvent.SelectAll -> {
+                val allMediaIds = _state.value.media.map { it.id }.toSet()
+                val currentSelectedIds = _state.value.selectedMediaIds.items
+                
+                val newSelection = if (currentSelectedIds.containsAll(allMediaIds)) {
+                     emptySet()
+                } else {
+                     allMediaIds
+                }
+                
+                _state.value = _state.value.copy(
+                    selectedMediaIds = com.irah.galleria.ui.util.ImmutableSet(newSelection),
+                    isSelectionMode = newSelection.isNotEmpty()
                 )
             }
             is GalleryEvent.UpdateSelection -> {
@@ -188,4 +219,5 @@ sealed class GalleryEvent {
     data class ToggleSelection(val mediaId: Long): GalleryEvent()
     data class UpdateSelection(val selectedIds: Set<Long>): GalleryEvent()
     object ClearSelection: GalleryEvent()
+    object SelectAll: GalleryEvent()
 }

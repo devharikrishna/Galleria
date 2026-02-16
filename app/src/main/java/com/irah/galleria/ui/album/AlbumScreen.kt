@@ -37,6 +37,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.irah.galleria.ui.album.components.AlbumGridItem
@@ -155,6 +156,24 @@ fun AlbumScreen(
                             )
                         }
                     }
+                }
+            }
+            
+            val operationState by viewModel.operationState.collectAsState(initial = com.irah.galleria.domain.model.MediaOperationState.Idle)
+            
+            androidx.compose.animation.AnimatedVisibility(
+                visible = operationState is com.irah.galleria.domain.model.MediaOperationState.Running,
+                enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp) 
+                    .zIndex(15f)
+            ) {
+                if (operationState is com.irah.galleria.domain.model.MediaOperationState.Running) {
+                     com.irah.galleria.ui.common.OperationProgressCard(
+                        state = operationState as com.irah.galleria.domain.model.MediaOperationState.Running
+                    )
                 }
             }
         }

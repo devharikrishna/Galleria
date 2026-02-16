@@ -114,10 +114,10 @@ fun SettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     Icon(
-                        painter = androidx.compose.ui.res.painterResource(id = com.irah.galleria.R.mipmap.ic_launcher),
+                        painter = painterResource(id = R.mipmap.ic_launcher),
                         contentDescription = null,
                         modifier = Modifier.size(32.dp).padding(start = 12.dp),
-                        tint = androidx.compose.ui.graphics.Color.Unspecified
+                        tint = Color.Unspecified
                     )
                 },
                 title = { Text("Settings") },

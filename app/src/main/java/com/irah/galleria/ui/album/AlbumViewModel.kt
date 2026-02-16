@@ -29,6 +29,7 @@ class AlbumViewModel @Inject constructor(
 ) : ViewModel() {
     private val _state = MutableStateFlow(AlbumState())
     val state: StateFlow<AlbumState> = _state.asStateFlow()
+    val operationState = mediaRepository.operationState
     init {
         loadAlbums()
     }

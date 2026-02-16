@@ -22,6 +22,7 @@ sealed class RecycleBinEvent {
     object RestoreSelected: RecycleBinEvent()
     object DeleteSelectedForever: RecycleBinEvent()
     object EmptyBin: RecycleBinEvent()
+    object SelectAll: RecycleBinEvent()
 }
 @HiltViewModel
 class RecycleBinViewModel @Inject constructor(
@@ -68,6 +69,21 @@ class RecycleBinViewModel @Inject constructor(
             RecycleBinEvent.DeleteSelectedForever -> {
             }
             RecycleBinEvent.EmptyBin -> {
+            }
+            RecycleBinEvent.SelectAll -> {
+                val allMediaIds = _state.value.media.map { it.id }.toSet()
+                val currentSelectedIds = _state.value.selectedMediaIds
+                
+                val newSelection = if (currentSelectedIds.containsAll(allMediaIds)) {
+                     emptySet()
+                } else {
+                     allMediaIds
+                }
+                
+                _state.value = _state.value.copy(
+                    selectedMediaIds = newSelection,
+                    isSelectionMode = newSelection.isNotEmpty()
+                )
             }
         }
     }
