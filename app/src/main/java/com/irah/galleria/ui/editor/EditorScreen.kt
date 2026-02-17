@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -30,20 +31,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.AutoFixNormal
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Gradient
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.AcUnit
-import androidx.compose.material.icons.filled.AutoFixNormal
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Texture
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.HorizontalDivider
@@ -74,11 +75,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.scale
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.core.graphics.scale
 import java.util.Locale
 
 @Composable
@@ -91,17 +92,15 @@ fun EditorScreen(
     
     // Hoisted state for smooth 60fps Straighten preview
     var tempStraightenDegrees by remember(state.adjustments.straightenDegrees) { mutableFloatStateOf(state.adjustments.straightenDegrees) }
-
-
     var showExitDialog by remember { mutableStateOf(false) }
-    
     androidx.activity.compose.BackHandler {
         showExitDialog = true
     }
+
     
     if (showExitDialog) {
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = { },
+            onDismissRequest = { showExitDialog = false },
             title = { Text("Discard Edits?") },
             text = { Text("Are you sure you want to exit? You will lose any unsaved changes.") },
             confirmButton = {
@@ -115,22 +114,23 @@ fun EditorScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { }) {
+                TextButton(onClick = { showExitDialog = false }) {
                     Text("Cancel")
                 }
             }
         )
     }
 
+
     Scaffold(
         topBar = {
             EditorTopBar(
                 canUndo = state.canUndo,
                 canRedo = state.canRedo,
-                onCancel = { },
+                onCancel = { showExitDialog = true },
                 onUndo = { viewModel.undo() },
                 onRedo = { viewModel.redo() },
-                onSave = { 
+                onSave = {
                     viewModel.saveImage { newId ->
                          if (newId != null) {
                              navController.navigate("media_viewer_screen/$newId") {
@@ -139,7 +139,7 @@ fun EditorScreen(
                          } else {
                              navController.popBackStack()
                          }
-                    } 
+                    }
                 }
             )
         },
@@ -314,6 +314,7 @@ fun EditorScreen(
             }
         }
     }
+
 }
 
 @Composable
@@ -364,8 +365,8 @@ fun EditorBottomBarNested(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.9f))
-            .systemBarsPadding()
+            .background(Color.Black)
+            .navigationBarsPadding()
     ) {
         when (state.activeTool) {
             EditorTool.LIGHT -> {
@@ -796,6 +797,8 @@ fun ToolButton(icon: ImageVector, label: String, isSelected: Boolean, onClick: (
         Text(label, style = MaterialTheme.typography.labelSmall, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White)
     }
 }
+
+
 
 @Composable
 fun FilterButton(

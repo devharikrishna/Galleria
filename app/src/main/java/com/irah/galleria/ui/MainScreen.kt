@@ -5,6 +5,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.PhotoAlbum
@@ -17,8 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import com.irah.galleria.ui.theme.GlassScaffold
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -28,12 +32,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -48,6 +46,8 @@ import com.irah.galleria.ui.mediaviewer.MediaViewerScreen
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.recyclebin.RecycleBinScreen
 import com.irah.galleria.ui.settings.SettingsScreen
+import com.irah.galleria.ui.theme.GlassScaffold
+
 val LocalBottomBarVisibility = compositionLocalOf { mutableStateOf(true) }
 sealed class BottomNavItem(
     val route: String,
@@ -91,6 +91,19 @@ fun MainScreen() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
                 val isMainScreen = items.any { it.route == currentDestination?.route }
+                
+                // Centralized System Navigation Bar Color Logic
+                val currentRoute = currentDestination?.route
+                val isBlackNavigationBar = currentRoute?.startsWith(Screen.Editor.route.substringBefore("/")) == true ||
+                                         currentRoute?.startsWith(Screen.MediaViewer.route.substringBefore("/")) == true
+
+                if (isBlackNavigationBar) {
+                    com.irah.galleria.ui.util.ForceSystemNavigationColor(androidx.compose.ui.graphics.Color.Black)
+                } else {
+                     // Revert to transparent/default for other screens to allow Liquid Glass effect
+                    com.irah.galleria.ui.util.ForceSystemNavigationColor(androidx.compose.ui.graphics.Color.Transparent)
+                }
+
                 AnimatedVisibility(
                     visible = isMainScreen && bottomBarVisibility.value,
                     enter = slideInVertically { it } + expandVertically(),

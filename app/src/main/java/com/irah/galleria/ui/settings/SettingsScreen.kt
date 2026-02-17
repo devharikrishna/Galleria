@@ -84,9 +84,9 @@ import com.irah.galleria.ui.LocalBottomBarVisibility
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.theme.GlassScaffold
 import com.irah.galleria.ui.theme.GlassSurface
-import java.util.Locale
 import java.util.Locale.getDefault
 import kotlin.math.roundToInt
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -398,8 +398,8 @@ fun SettingsScreen(
                     SettingsSlider(
                         title = "Items per Row",
                         value = settings.albumGridCount.toFloat(),
-                        range = 1f..4f,
-                        steps = 2,
+                        range = 2f..4f,
+                        steps = 1,
                         icon = Icons.Outlined.GridOn,
                         onValueChange = { viewModel.setAlbumGridCount(it.roundToInt()) }
                     )

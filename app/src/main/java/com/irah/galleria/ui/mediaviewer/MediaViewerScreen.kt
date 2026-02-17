@@ -39,6 +39,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,8 +71,11 @@ fun MediaViewerScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
+
     var showControls by remember { mutableStateOf(true) }
     var showInfoSheet by remember { mutableStateOf(false) }
+
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -81,6 +85,30 @@ fun MediaViewerScreen(
             Toast.makeText(context, "Media delete failed", Toast.LENGTH_SHORT).show()
         }
     }
+
+    // Handle Max Brightness
+    DisposableEffect(settings.maxBrightness) {
+        val activity = com.irah.galleria.ui.util.findActivity(context)
+        val window = activity?.window
+        val originalBrightness = window?.attributes?.screenBrightness
+        
+        if (settings.maxBrightness) {
+            val layoutParams = window?.attributes
+            layoutParams?.screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
+            window?.attributes = layoutParams
+        }
+
+        onDispose {
+            if (settings.maxBrightness) { 
+                 val layoutParams = window?.attributes
+                 layoutParams?.screenBrightness = originalBrightness ?: android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                 window?.attributes = layoutParams
+            }
+        }
+    }
+
+
+
 
     if (!state.isLoading && state.mediaList.isNotEmpty()) {
         val pagerState = rememberPagerState(
@@ -156,8 +184,8 @@ fun MediaViewerScreen(
                                             addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
                                         context.startActivity(editIntent)
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(context, "No video editor app found", android.widget.Toast.LENGTH_SHORT).show()
+                                    } catch (_: Exception) {
+                                        Toast.makeText(context, "No video editor app found", Toast.LENGTH_SHORT).show()
                                     }
                                 } else {
                                     navController.navigate(
@@ -229,8 +257,8 @@ fun MediaViewerScreen(
                                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
                                     context.startActivity(editIntent)
-                                } catch (e: Exception) {
-                                    android.widget.Toast.makeText(context, "No video editor app found", android.widget.Toast.LENGTH_SHORT).show()
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "No video editor app found", Toast.LENGTH_SHORT).show()
                                 }
                             } else {
                                 navController.navigate(
@@ -265,7 +293,7 @@ fun MediaViewerScreen(
         }
         if (showInfoSheet) {
             ModalBottomSheet(
-                onDismissRequest = { showInfoSheet = false },
+                onDismissRequest = { },
                 sheetState = rememberModalBottomSheetState()
             ) {
                 MediaInfoContent(media = currentMedia)
@@ -354,13 +382,4 @@ fun formatSize(size: Long): String {
 fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
-}
-
-private fun findActivity(context: android.content.Context): Activity? {
-    var ctx = context
-    while (ctx is android.content.ContextWrapper) {
-        if (ctx is Activity) return ctx
-        ctx = ctx.baseContext
-    }
-    return null
 }

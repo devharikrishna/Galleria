@@ -16,7 +16,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "galleria_settings")
 class SettingsRepositoryImpl @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) : SettingsRepository {
@@ -37,7 +37,7 @@ class SettingsRepositoryImpl @Inject constructor(
         val ALBUM_DETAIL_CORNER_RADIUS = intPreferencesKey("album_detail_corner_radius")
         val MAX_BRIGHTNESS = booleanPreferencesKey("max_brightness")
         val VIDEO_AUTOPLAY = booleanPreferencesKey("video_autoplay")
-        val UI_MODE = stringPreferencesKey("ui_mode_v2")
+        val UI_MODE = stringPreferencesKey("ui_mode")
         val TRASH_ENABLED = booleanPreferencesKey("trash_enabled")
         val BLOB_ANIMATION = stringPreferencesKey("blob_animation")
     }
@@ -45,13 +45,13 @@ class SettingsRepositoryImpl @Inject constructor(
         AppSettings(
             themeMode = try {
                 ThemeMode.valueOf(preferences[Keys.THEME_MODE] ?: ThemeMode.SYSTEM.name)
-            } catch (e: Exception) { ThemeMode.SYSTEM },
+            } catch (_: Exception) { ThemeMode.SYSTEM },
             uiMode = try {
                 UiMode.valueOf(preferences[Keys.UI_MODE] ?: UiMode.LIQUID_GLASS.name)
-            } catch (e: Exception) { UiMode.LIQUID_GLASS },
+            } catch (_: Exception) { UiMode.LIQUID_GLASS },
             galleryViewType = try {
                 GalleryViewType.valueOf(preferences[Keys.VIEW_TYPE] ?: GalleryViewType.STAGGERED.name)
-            } catch (e: Exception) { GalleryViewType.STAGGERED },
+            } catch (_: Exception) { GalleryViewType.STAGGERED },
             galleryGridCount = preferences[Keys.GALLERY_GRID_COUNT] ?: 3,
             albumGridCount = preferences[Keys.ALBUM_GRID_COUNT] ?: 3,
             showMediaCount = preferences[Keys.SHOW_MEDIA_COUNT] ?: true,
@@ -62,14 +62,14 @@ class SettingsRepositoryImpl @Inject constructor(
             useDynamicColor = preferences[Keys.USE_DYNAMIC_COLOR] ?: true,
             albumDetailViewType = try {
                 GalleryViewType.valueOf(preferences[Keys.ALBUM_DETAIL_VIEW_TYPE] ?: GalleryViewType.STAGGERED.name)
-            } catch (e: Exception) { GalleryViewType.STAGGERED },
+            } catch (_: Exception) { GalleryViewType.STAGGERED },
             albumDetailGridCount = preferences[Keys.ALBUM_DETAIL_GRID_COUNT] ?: 3,
             albumDetailCornerRadius = preferences[Keys.ALBUM_DETAIL_CORNER_RADIUS] ?: 12,
             maxBrightness = preferences[Keys.MAX_BRIGHTNESS] ?: false,
             trashEnabled = preferences[Keys.TRASH_ENABLED] ?: true,
             blobAnimation = try {
                 com.irah.galleria.domain.model.BackgroundAnimationType.valueOf(preferences[Keys.BLOB_ANIMATION] ?: com.irah.galleria.domain.model.BackgroundAnimationType.WAVE.name)
-            } catch (e: Exception) { com.irah.galleria.domain.model.BackgroundAnimationType.WAVE }
+            } catch (_: Exception) { com.irah.galleria.domain.model.BackgroundAnimationType.WAVE }
         )
     }
     override suspend fun setThemeMode(mode: ThemeMode) {
@@ -117,7 +117,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setVideoAutoplay(enabled: Boolean) {
         dataStore.edit { it[Keys.VIDEO_AUTOPLAY] = enabled }
     }
-    override suspend fun setUiMode(mode: com.irah.galleria.domain.model.UiMode) {
+    override suspend fun setUiMode(mode: UiMode) {
         dataStore.edit { it[Keys.UI_MODE] = mode.name }
     }
     override suspend fun setTrashEnabled(enabled: Boolean) {
