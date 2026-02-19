@@ -42,6 +42,11 @@
 *   **Detail Enhancement**: Tools for Clarity, Sharpening, and Denoise to perfect your shots.
 *   **Geometry Tools**: Crop, Rotate, Straighten, and Flip with an intuitive overlay.
 *   **Filters**: Filters with multiple scene and mood.
+*   **Blur**: Blur background of portraits.
+*   **S-Curve**: Powerful S-Curve to edit more deeply.
+
+### ⚙️ Tools
+*   **PDF Export**: Select multiple images and export them as a single PDF document.
 
 ### 🎬 Advanced Media Playback
 *   **Custom Video Engine**: Built on **Media3 ExoPlayer** for seamless 4K playback.
@@ -51,11 +56,13 @@
 ### 🗂️ Powerful Management
 *   **Smart Albums**: Automatically organizes **Favorites**, **Screenshots**, and **Recycle Bin** for quick access.
 *   **Enhanced Selection**: 
-    *   **Drag Select**: Intuitive multi-selection by dragging across the grid.
+*   **Drag Select**: Intuitive multi-selection by dragging across the grid.
 *   **Recycle Bin**: Safety net for deleted items with restore capability.
 
 ### ⚙️ Customization
 *   **Grid Control**: Adjustable grid count to suit your viewing preference.
+*   **Media Item Corner Radius Control**: Adjustable Media item corner radius control to suit your viewing preference.
+
 
 ---
 

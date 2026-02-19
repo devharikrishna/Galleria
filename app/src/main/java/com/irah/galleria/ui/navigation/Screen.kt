@@ -52,4 +52,11 @@ sealed class Screen(val route: String) {
             navArgument(MEDIA_ID_ARG) { type = NavType.LongType }
         )
     }
+    object PdfExport : Screen("pdf_export_screen") {
+        const val MEDIA_IDS_ARG = "mediaIds"
+        val routeWithArgs = "$route/{$MEDIA_IDS_ARG}"
+        val arguments: List<NamedNavArgument> = listOf(
+            navArgument(MEDIA_IDS_ARG) { type = NavType.StringType }
+        )
+    }
 }

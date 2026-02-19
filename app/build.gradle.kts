@@ -80,6 +80,7 @@ dependencies {
     // Coil
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
+    implementation("com.google.mediapipe:tasks-vision:0.10.32")
 
     // Icons
     implementation(libs.androidx.material.icons.extended)

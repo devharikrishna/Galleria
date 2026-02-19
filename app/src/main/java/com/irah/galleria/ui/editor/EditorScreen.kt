@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
@@ -152,7 +153,12 @@ fun EditorScreen(
                 onAdjustmentCommit = { viewModel.commitAdjustment() },
                 onSetAspectRatio = { viewModel.setAspectRatio(it) },
                 tempStraighten = tempStraightenDegrees,
-                onTempStraightenChange = { tempStraightenDegrees = it }
+                onTempStraightenChange = { tempStraightenDegrees = it },
+                onToggleBackgroundRemove = { viewModel.toggleBackgroundRemove() },
+                onSetBackgroundBlur = { viewModel.setBackgroundBlur(it) },
+                onCommitBackgroundBlur = { viewModel.commitBackgroundBlur() },
+                onCurveChannelChange = { viewModel.setActiveCurveChannel(it) },
+                onCurvePointsChange = { viewModel.setCurvePoints(it) }
             )
         },
         containerColor = Color.Black
@@ -360,7 +366,12 @@ fun EditorBottomBarNested(
     onAdjustmentCommit: () -> Unit,
     onSetAspectRatio: (Float?) -> Unit,
     tempStraighten: Float,
-    onTempStraightenChange: (Float) -> Unit
+    onTempStraightenChange: (Float) -> Unit,
+    onToggleBackgroundRemove: () -> Unit,
+    onSetBackgroundBlur: (Float) -> Unit,
+    onCommitBackgroundBlur: () -> Unit,
+    onCurveChannelChange: (CurveChannel) -> Unit,
+    onCurvePointsChange: (List<Pair<Float, Float>>) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -453,22 +464,25 @@ fun EditorBottomBarNested(
                      Row(
                          verticalAlignment = Alignment.CenterVertically,
                          horizontalArrangement = Arrangement.SpaceBetween,
-                         modifier = Modifier.fillMaxWidth()
+                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                      ) {
-                         Text("Straighten", color = Color.White, style = MaterialTheme.typography.bodySmall)
-                         Text("${tempStraighten.toInt()}°", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                         Text("Straighten", color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(70.dp))
+                         
+                         EditorSlider(
+                             value = tempStraighten,
+                             onValueChange = { 
+                                 onTempStraightenChange(it)
+                             },
+                             valueRange = -45f..45f,
+                             onValueChangeFinished = { 
+                                 onAdjustmentChange(state.adjustments.copy(straightenDegrees = tempStraighten))
+                                 onAdjustmentCommit() 
+                             },
+                             modifier = Modifier.weight(1f)
+                         )
+                         
+                         Text("${tempStraighten.toInt()}°", color = Color.LightGray, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                      }
-                     androidx.compose.material3.Slider(
-                         value = tempStraighten,
-                         onValueChange = { 
-                             onTempStraightenChange(it)
-                         },
-                         valueRange = -45f..45f,
-                         onValueChangeFinished = { 
-                             onAdjustmentChange(state.adjustments.copy(straightenDegrees = tempStraighten))
-                             onAdjustmentCommit() 
-                         },
-                     )
                  }
                  HorizontalDivider(color = Color.DarkGray)
                  
@@ -504,7 +518,7 @@ fun EditorBottomBarNested(
                              verticalAlignment = Alignment.CenterVertically
                          ) {
                              Text("Strength", color = Color.LightGray, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(60.dp))
-                             androidx.compose.material3.Slider(
+                             EditorSlider(
                                  value = state.adjustments.filterStrength,
                                  onValueChange = { onAdjustmentChange(state.adjustments.copy(filterStrength = it)) },
                                  valueRange = 0f..1f,
@@ -573,6 +587,55 @@ fun EditorBottomBarNested(
                  }
                  HorizontalDivider(color = Color.DarkGray)
             }
+            EditorTool.BACKGROUND -> {
+                 Column(
+                     modifier = Modifier.fillMaxWidth().padding(16.dp),
+                     horizontalAlignment = Alignment.CenterHorizontally,
+                     verticalArrangement = Arrangement.spacedBy(16.dp)
+                 ) {
+                     val isBlurActive = state.adjustments.backgroundMode == BitmapUtils.BackgroundMode.BLUR
+                     val currentBlur = if (isBlurActive) state.adjustments.backgroundBlurRadius else 0f
+                     
+                     Text("Blur Background", style = MaterialTheme.typography.bodyMedium, color = if(isBlurActive) MaterialTheme.colorScheme.primary else Color.LightGray)
+                     
+                     Row(
+                         verticalAlignment = Alignment.CenterVertically,
+                         modifier = Modifier.fillMaxWidth()
+                     ) {
+                         Text("Strength", style = MaterialTheme.typography.bodySmall, color = Color.Gray, modifier = Modifier.width(60.dp))
+                         EditorSlider(
+                             value = currentBlur,
+                             onValueChange = { onSetBackgroundBlur(it) },
+                             onValueChangeFinished = { onCommitBackgroundBlur() },
+                             valueRange = 0f..0.05f,
+                             modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                         )
+                         Text("${(currentBlur*200).toInt()}", style = MaterialTheme.typography.bodySmall, color = Color.White, modifier = Modifier.width(40.dp))
+                     }
+                     
+                     if (state.isLoading) {
+                         Text("Processing Segmentation...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                     }
+                 }
+                 HorizontalDivider(color = Color.DarkGray)
+            }
+            EditorTool.CURVES -> {
+                 CurvesTool(
+                     activeChannel = state.activeCurveChannel,
+                     points = when(state.activeCurveChannel) {
+                         CurveChannel.RGB -> state.adjustments.curveRGB
+                         CurveChannel.RED -> state.adjustments.curveRed
+                         CurveChannel.GREEN -> state.adjustments.curveGreen
+                         CurveChannel.BLUE -> state.adjustments.curveBlue
+                         CurveChannel.LUMINANCE -> state.adjustments.curveLuminance
+                     },
+                     onChannelChange = onCurveChannelChange,
+                     onPointsChange = onCurvePointsChange,
+                     onCommit = onAdjustmentCommit
+                 )
+                 HorizontalDivider(color = Color.DarkGray)
+            }
+
             else -> {}
         }
 
@@ -588,9 +651,300 @@ fun EditorBottomBarNested(
             item { ToolButton(Icons.Default.Gradient, "HSL", state.activeTool == EditorTool.HSL) { onToolSelect(EditorTool.HSL) } }
             item { ToolButton(Icons.Default.Crop, "Crop", state.activeTool == EditorTool.CROP) { onToolSelect(EditorTool.CROP) } }
             item { ToolButton(Icons.Default.AutoFixHigh, "Filters", state.activeTool == EditorTool.FILTER) { onToolSelect(EditorTool.FILTER) } }
+            item { ToolButton(Icons.Filled.Texture, "Background", state.activeTool == EditorTool.BACKGROUND) { onToolSelect(EditorTool.BACKGROUND) } }
+            item { ToolButton(Icons.Default.Gradient, "Curves", state.activeTool == EditorTool.CURVES) { onToolSelect(EditorTool.CURVES) } }
         }
     }
 }
+
+
+
+@Composable
+fun CurvesTool(
+    activeChannel: CurveChannel,
+    points: List<Pair<Float, Float>>,
+    onChannelChange: (CurveChannel) -> Unit,
+    onPointsChange: (List<Pair<Float, Float>>) -> Unit,
+    onCommit: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Channel Selector
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            CurveChannel.entries.forEach { channel ->
+                val isSelected = activeChannel == channel
+                val color = when(channel) {
+                    CurveChannel.RGB -> Color.White
+                    CurveChannel.RED -> Color(0xFFFF6B6B)
+                    CurveChannel.GREEN -> Color(0xFF51CF66)
+                    CurveChannel.BLUE -> Color(0xFF339AF0)
+                    CurveChannel.LUMINANCE -> Color.Gray
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSelected) Color.DarkGray else Color.Transparent)
+                        .clickable { onChannelChange(channel) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = channel.name,
+                        color = if (isSelected) color else Color.Gray,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(250.dp)
+                .background(Color(0xFF202020), RoundedCornerShape(8.dp))
+                .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                .pointerInput(activeChannel, points) {
+                    detectTapGestures(
+                        onDoubleTap = { offset ->
+                            val hitThreshold = 30f // dp to px ideally, but approx 30px is ok
+                            
+                            val closestIndex = points.withIndex().minByOrNull { 
+                                val px = it.value.first * size.width
+                                val py = (1f - it.value.second) * size.height
+                                val dx = px - offset.x
+                                val dy = py - offset.y
+                                dx*dx + dy*dy 
+                            }?.index ?: -1
+                            
+                            if (closestIndex != -1 && closestIndex != 0 && closestIndex != points.size - 1) {
+                                val p = points[closestIndex]
+                                val px = p.first * size.width
+                                val py = (1f - p.second) * size.height
+                                val dx = px - offset.x
+                                val dy = py - offset.y
+                                if (dx*dx + dy*dy < hitThreshold*hitThreshold) {
+                                     val newPoints = points.toMutableList()
+                                     newPoints.removeAt(closestIndex)
+                                     onPointsChange(newPoints)
+                                     onCommit()
+                                }
+                            }
+                        },
+                        onTap = { offset ->
+                            val x = (offset.x / size.width).coerceIn(0f, 1f)
+                            val y = (1f - (offset.y / size.height)).coerceIn(0f, 1f)
+                            val newPoints = points.toMutableList()
+                            newPoints.add(x to y)
+                            newPoints.sortBy { it.first }
+                            onPointsChange(newPoints)
+                            onCommit()
+                        }
+                    )
+                }
+                .pointerInput(activeChannel, points) {
+                    detectDragGestures(
+                        onDragEnd = { onCommit() }
+                    ) { change, _ ->
+                        val pos = change.position
+                        val x = (pos.x / size.width).coerceIn(0f, 1f)
+                        val y = (1f - (pos.y / size.height)).coerceIn(0f, 1f)
+                        
+                        val closestIndex = points.withIndex().minByOrNull { 
+                            val px = it.value.first * size.width
+                            val py = (1f - it.value.second) * size.height
+                            val dx = px - pos.x
+                            val dy = py - pos.y
+                            dx*dx + dy*dy 
+                        }?.index ?: -1
+                        
+                        val hitThreshold = 100f // larger threshold for dragging
+                        
+                        if (closestIndex != -1) {
+                            val p = points[closestIndex]
+                            val px = p.first * size.width
+                            val py = (1f - p.second) * size.height
+                            val dx = px - pos.x
+                            val dy = py - pos.y
+                            
+                            // Only drag if reasonably close
+                            if (dx*dx + dy*dy < hitThreshold*hitThreshold) {
+                                val newX = if (closestIndex == 0 || closestIndex == points.size-1) p.first else x
+                                // Allow Y to go full range
+                                val newY = y.coerceIn(0f, 1f)
+                                
+                                val newPoints = points.toMutableList()
+                                if (closestIndex > 0) {
+                                     val prev = newPoints[closestIndex-1]
+                                     if (newX <= prev.first) return@detectDragGestures 
+                                }
+                                if (closestIndex < points.size - 1) {
+                                     val next = newPoints[closestIndex+1]
+                                     if (newX >= next.first) return@detectDragGestures
+                                }
+
+                                newPoints[closestIndex] = newX to newY
+                                // Simplify by resorting every frame? Might be jumpy but safe
+                                newPoints.sortBy { it.first }
+                                onPointsChange(newPoints)
+                            }
+                        }
+                    }
+                }
+        ) {
+            val lineColor = when(activeChannel) {
+                CurveChannel.RGB -> Color.White
+                CurveChannel.RED -> Color.Red
+                CurveChannel.GREEN -> Color.Green
+                CurveChannel.BLUE -> Color.Blue
+                CurveChannel.LUMINANCE -> Color.LightGray
+            }
+            
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val step = w / 4
+                
+                // Grid Lines
+                for (i in 1..3) {
+                    drawLine(Color.Gray.copy(alpha=0.3f), Offset(step * i, 0f), Offset(step * i, h), strokeWidth=1f)
+                    drawLine(Color.Gray.copy(alpha=0.3f), Offset(0f, step * i), Offset(w, step * i), strokeWidth=1f)
+                }
+                
+                // Reference Diagonal (0,0) to (1,1) -> Visual (0, h) to (w, 0)
+                drawLine(
+                    color = Color.Gray.copy(alpha=0.5f),
+                    start = Offset(0f, h),
+                    end = Offset(w, 0f),
+                    strokeWidth = 2f,
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+
+                val sorted = points.sortedBy { it.first }
+                if (sorted.isNotEmpty()) {
+                    // Calculate Spline Path for UI
+                    val path = androidx.compose.ui.graphics.Path()
+                    
+                    // Same Monotone Cubic Spline logic as BitmapUtils for UI consistency
+                    val n = sorted.size
+                    if (n > 1) {
+                         val xs = FloatArray(n) { sorted[it].first * w }
+                         val ys = FloatArray(n) { (1f - sorted[it].second) * h }
+                         val delta = FloatArray(n - 1)
+                         for (i in 0 until n - 1) {
+                             val dx = xs[i+1] - xs[i]
+                             val dy = ys[i+1] - ys[i]
+                             delta[i] = if (dx == 0f) 0f else dy / dx
+                         }
+                         val m = FloatArray(n)
+                         m[0] = delta[0]
+                         m[n-1] = delta[n-2]
+                         for (i in 1 until n - 1) m[i] = (delta[i-1] + delta[i]) / 2f
+                         
+                         if (n > 2) {
+                            for (i in 0 until n - 1) {
+                                if (delta[i] == 0f) {
+                                    m[i] = 0f
+                                    m[i+1] = 0f
+                                } else {
+                                    val alpha = m[i] / delta[i]
+                                    val beta = m[i+1] / delta[i]
+                                    val dist = alpha * alpha + beta * beta
+                                    if (dist > 9f) {
+                                        val tau = 3f / kotlin.math.sqrt(dist)
+                                        m[i] = tau * alpha * delta[i]
+                                        m[i+1] = tau * beta * delta[i]
+                                    }
+                                }
+                            }
+                         }
+                         
+                         path.moveTo(xs[0], ys[0])
+                         for (i in 0 until n - 1) {
+                             // Draw segments
+                             val segments = 20 // Segments per interval
+                             val dx = xs[i+1] - xs[i]
+                             if (dx > 0) {
+                                 for (j in 1..segments) {
+                                     val t = j.toFloat() / segments
+                                     val t2 = t * t
+                                     val t3 = t2 * t
+                                     val h00 = 2 * t3 - 3 * t2 + 1
+                                     val h10 = t3 - 2 * t2 + t
+                                     val h01 = -2 * t3 + 3 * t2
+                                     val h11 = t3 - t2
+                                     val px = xs[i] + t * dx 
+                                     val py = h00 * ys[i] + h10 * dx * m[i] + h01 * ys[i+1] + h11 * dx * m[i+1]
+                                     path.lineTo(px, py)
+                                 }
+                             } else {
+                                 path.lineTo(xs[i+1], ys[i+1])
+                             }
+                         }
+                    } else {
+                        // fallback single point
+                         path.moveTo(sorted[0].first * w, (1f - sorted[0].second) * h)
+                         path.lineTo(sorted[0].first * w, (1f - sorted[0].second) * h)
+                    }
+
+                    drawPath(path, lineColor, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()))
+                    
+                    for (p in sorted) {
+                        drawCircle(lineColor, radius = 4.dp.toPx(), center = Offset(p.first * w, (1f - p.second) * h))
+                        drawCircle(Color.Black, radius = 2.dp.toPx(), center = Offset(p.first * w, (1f - p.second) * h))
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Presets
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+        ) {
+            item {
+                IconButton(onClick = { 
+                     onPointsChange(listOf(0f to 0f, 1f to 1f))
+                     onCommit()
+                 }) {
+                     Icon(Icons.Default.Refresh, "Reset", tint = Color.White)
+                 }
+            }
+            item {
+                 TextButton(onClick = {
+                     onPointsChange(listOf(0f to 0f, 0.25f to 0.20f, 0.75f to 0.80f, 1f to 1f))
+                     onCommit()
+                 }) { Text("Soft Contrast") }
+            }
+            item {
+                 TextButton(onClick = {
+                     onPointsChange(listOf(0f to 0f, 0.25f to 0.15f, 0.75f to 0.85f, 1f to 1f))
+                     onCommit()
+                 }) { Text("Hard Contrast") }
+            }
+             item {
+                 TextButton(onClick = {
+                     onPointsChange(listOf(0f to 0.1f, 0.25f to 0.25f, 0.75f to 0.75f, 1f to 0.9f)) // Matte
+                     onCommit()
+                 }) { Text("Matte") }
+            }
+        }
+    }
+}
+
+
+
+
+
 
 
 @Composable
@@ -692,6 +1046,9 @@ fun AdjustmentSlidersGroup(
                         onAdjustmentChange(adjustments.copy(hsl = newMap))
                     }, onCommit)
                 }
+
+
+
                 else -> {}
             }
         }
@@ -714,6 +1071,7 @@ fun SliderParam(
          (value * 100).toInt()
     }
 
+
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             label, 
@@ -722,35 +1080,12 @@ fun SliderParam(
             style = MaterialTheme.typography.bodySmall
         )
         
-        androidx.compose.material3.Slider(
+        EditorSlider(
             value = value,
             onValueChange = onValueChange,
             onValueChangeFinished = onCommit,
             valueRange = range,
-            modifier = Modifier.weight(1f),
-            colors = androidx.compose.material3.SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = Color.DarkGray,
-            ),
-            thumb = {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .background(Color.White, CircleShape)
-                        .border(1.dp, Color.Black.copy(alpha=0.2f), CircleShape)
-                )
-            },
-            track = { sliderState ->
-                androidx.compose.material3.SliderDefaults.Track(
-                    sliderState = sliderState,
-                    modifier = Modifier.height(2.dp),
-                    colors = androidx.compose.material3.SliderDefaults.colors(
-                         activeTrackColor = MaterialTheme.colorScheme.primary,
-                         inactiveTrackColor = Color.DarkGray
-                    )
-                )
-            }
+            modifier = Modifier.weight(1f)
         )
         
         Text(
@@ -782,6 +1117,47 @@ fun SliderParam(
             }
         }
     }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun EditorSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    onValueChangeFinished: (() -> Unit)? = null,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f
+) {
+    androidx.compose.material3.Slider(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        valueRange = valueRange,
+        onValueChangeFinished = onValueChangeFinished,
+        colors = androidx.compose.material3.SliderDefaults.colors(
+            thumbColor = Color.White,
+            activeTrackColor = MaterialTheme.colorScheme.primary,
+            inactiveTrackColor = Color.DarkGray,
+        ),
+        thumb = {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(Color.White, CircleShape)
+                    .border(1.dp, Color.Black.copy(alpha=0.2f), CircleShape)
+            )
+        },
+        track = { sliderState ->
+            androidx.compose.material3.SliderDefaults.Track(
+                sliderState = sliderState,
+                modifier = Modifier.height(2.dp),
+                colors = androidx.compose.material3.SliderDefaults.colors(
+                     activeTrackColor = MaterialTheme.colorScheme.primary,
+                     inactiveTrackColor = Color.DarkGray
+                )
+            )
+        }
+    )
 }
 
 @Composable

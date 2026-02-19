@@ -29,6 +29,7 @@ class AlbumDetailViewModel @Inject constructor(
     private val getMediaUseCase: com.irah.galleria.domain.usecase.GetMediaUseCase,
     private val repository: MediaRepository,
     private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase,
+    private val getMemoriesUseCase: com.irah.galleria.domain.usecase.GetMemoriesUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val _state = MutableStateFlow(AlbumDetailState())
@@ -50,9 +51,10 @@ class AlbumDetailViewModel @Inject constructor(
     }
     private fun loadMedia() {
         viewModelScope.launch {
-            if (albumId == -1L) return@launch
-            getMediaUseCase(albumId = albumId).collect { mediaList ->
-                 _state.value = _state.value.copy(media = mediaList)
+             if (albumId != -1L) {
+                getMediaUseCase(albumId = albumId).collect { mediaList ->
+                     _state.value = _state.value.copy(media = mediaList)
+                }
             }
         }
     }

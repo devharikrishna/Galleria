@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -81,12 +80,9 @@ fun MediaViewerScreen(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             Toast.makeText(context, "Media deleted", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "Media delete failed", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Handle Max Brightness
     DisposableEffect(settings.maxBrightness) {
         val activity = com.irah.galleria.ui.util.findActivity(context)
         val window = activity?.window
@@ -97,7 +93,6 @@ fun MediaViewerScreen(
             layoutParams?.screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
             window?.attributes = layoutParams
         }
-
         onDispose {
             if (settings.maxBrightness) { 
                  val layoutParams = window?.attributes
@@ -107,15 +102,12 @@ fun MediaViewerScreen(
         }
     }
 
-
-
-
     if (!state.isLoading && state.mediaList.isNotEmpty()) {
         val pagerState = rememberPagerState(
             initialPage = state.initialIndex,
             pageCount = { state.mediaList.size }
         )
-        val currentMedia = state.mediaList[pagerState.currentPage]
+        val currentMedia = state.mediaList.getOrNull(pagerState.currentPage) ?: state.mediaList.lastOrNull() ?: return
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -226,30 +218,11 @@ fun MediaViewerScreen(
                     exit = fadeOut(),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
-                                )
-                            )
-                            .padding(vertical = 12.dp, horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        IconButton(onClick = { viewModel.toggleFavorite(currentMedia) }) {
-                            Icon(
-                                if (currentMedia.isFavorite) Icons.Default.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = "Favorite",
-                                tint = if (currentMedia.isFavorite) Color.Red else Color.White
-                            )
-                        }
-                        IconButton(onClick = {
-                            showInfoSheet = true
-                        }) {
-                            Icon(Icons.Default.Info, contentDescription = "Info", tint = Color.White)
-                        }
-                        IconButton(onClick = {
+                    com.irah.galleria.ui.common.MediaBottomBar(
+                        isFavorite = currentMedia.isFavorite,
+                        onFavoriteClick = { viewModel.toggleFavorite(currentMedia) },
+                        onInfoClick = { showInfoSheet = true },
+                        onEditClick = {
                             if (currentMedia.isVideo) {
                                 try {
                                     val editIntent = android.content.Intent(android.content.Intent.ACTION_EDIT).apply {
@@ -265,35 +238,30 @@ fun MediaViewerScreen(
                                     com.irah.galleria.ui.navigation.Screen.Editor.route + "/${currentMedia.id}"
                                 )
                             }
-                        }) {
-                            Icon(Icons.Default.Tune, contentDescription = "Edit", tint = Color.White)
-                        }
-                        IconButton(onClick = {
+                        },
+                        onShareClick = {
                             val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                 type = currentMedia.mimeType
                                 putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
                                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
                             context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
-                        }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
-                        }
-                        IconButton(onClick = {
+                        },
+                        onDeleteClick = {
                             viewModel.deleteMedia(currentMedia) { intentSender ->
                                 deleteLauncher.launch(
                                     IntentSenderRequest.Builder(intentSender).build()
                                 )
                             }
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
-                        }
-                    }
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
                 }
             }
         }
         if (showInfoSheet) {
             ModalBottomSheet(
-                onDismissRequest = { },
+                onDismissRequest = { showInfoSheet = false },
                 sheetState = rememberModalBottomSheetState()
             ) {
                 MediaInfoContent(media = currentMedia)
@@ -301,7 +269,13 @@ fun MediaViewerScreen(
         }
     } else {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            LinearProgressIndicator()
+            if (state.isLoading) {
+                LinearProgressIndicator()
+            } else {
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    navController.popBackStack()
+                }
+            }
         }
     }
 }

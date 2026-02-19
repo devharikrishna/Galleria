@@ -40,15 +40,23 @@ data class EditorState(
     
     // Cache for Auto Enhance Analysis (Exposure, Contrast)
     val autoEnhanceParams: Pair<Float, Float>? = null,
-    val activeAutoVariant: AutoEnhanceVariant? = null
+    val activeAutoVariant: AutoEnhanceVariant? = null,
+    
+    // Curves
+    val activeCurveChannel: CurveChannel = CurveChannel.RGB
 )
 
 enum class EditorTool {
-    NONE, LIGHT, COLOR, DETAIL, HSL, CROP, FILTER, MARKUP, AUTO_ENHANCE
+    NONE, LIGHT, COLOR, DETAIL, HSL, CURVES, CROP, FILTER, BACKGROUND, MARKUP, AUTO_ENHANCE
 }
+
 
 enum class AutoEnhanceVariant {
     NONE, BALANCED, WARM, COOL, VIVID
+}
+
+enum class CurveChannel {
+    RGB, RED, GREEN, BLUE, LUMINANCE
 }
 
 @HiltViewModel
@@ -121,7 +129,13 @@ class EditorViewModel @Inject constructor(
 
             // Reduce preview size for live updates to improve performance
             // 720p is sufficient for phone screens and much faster to process on CPU
-            val newPreview = BitmapUtils.applyAdjustments(original, effectiveAdjustments, 720, 1280)
+            val newPreview = BitmapUtils.applyAdjustments(
+                original = original, 
+                adjustments = effectiveAdjustments, 
+                previewWidth = 720, 
+                previewHeight = 1280,
+                segmentationMask = segmentationMask
+            )
             _state.update { it.copy(previewBitmap = newPreview) }
         }
     }
@@ -145,6 +159,10 @@ class EditorViewModel @Inject constructor(
         }
         // Re-render because switching to/from CROP changes how we display the preview
         triggerRender(_state.value.adjustments)
+        
+        if (tool == EditorTool.BACKGROUND) {
+            prepareSegmentation()
+        }
     }
     
     fun applyAutoVariant(variant: AutoEnhanceVariant) {
@@ -290,7 +308,8 @@ class EditorViewModel @Inject constructor(
                         onProgress = { p -> 
                             // Scale process progress to 80% of total bar
                             _saveProgress.value = p * 0.8f 
-                        }
+                        },
+                        segmentationMask = segmentationMask
                     )
                     
                     // 2. Save File (80% -> 100%)
@@ -343,4 +362,84 @@ class EditorViewModel @Inject constructor(
             withContext(Dispatchers.Main) { onComplete(savedId) }
         }
     }
+
+
+    private val segmentationHelper by lazy { SegmentationHelper(context) }
+    private var segmentationMask: android.graphics.Bitmap? = null
+
+    fun prepareSegmentation() {
+        if (segmentationMask != null) return
+        
+        val original = _state.value.originalBitmap ?: return
+        android.util.Log.d("EditorViewModel", "Preparing segmentation for original: ${original.width}x${original.height}")
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                segmentationMask = segmentationHelper.segmentImage(original)
+                if (segmentationMask != null) {
+                    android.util.Log.d("EditorViewModel", "Segmentation successful (pre-load)")
+                } else {
+                    android.util.Log.e("EditorViewModel", "Segmentation failed: mask is null")
+                }
+            } catch (e: Exception) {
+                 android.util.Log.e("EditorViewModel", "Error in prepareSegmentation", e)
+                 e.printStackTrace()
+            } finally {
+               _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    fun toggleBackgroundRemove() {
+        val current = _state.value.adjustments
+        val newMode = if (current.backgroundMode == BitmapUtils.BackgroundMode.REMOVE) {
+            BitmapUtils.BackgroundMode.NONE
+        } else {
+            BitmapUtils.BackgroundMode.REMOVE
+        }
+        
+        val newAdjustments = current.copy(backgroundMode = newMode)
+        onAdjustmentChange(newAdjustments)
+        commitAdjustment()
+    }
+    
+    fun setBackgroundBlur(amount: Float) {
+        // If amount 0, mode NONE. Else BLUR.
+        val current = _state.value.adjustments
+        val newMode = if (amount <= 0f) BitmapUtils.BackgroundMode.NONE else BitmapUtils.BackgroundMode.BLUR
+        
+        val newAdjustments = current.copy(
+            backgroundMode = newMode,
+            backgroundBlurRadius = amount
+        )
+        onAdjustmentChange(newAdjustments)
+    }
+
+    fun commitBackgroundBlur() {
+        // Called when slider released?
+        commitAdjustment()
+    }
+
+    fun setActiveCurveChannel(channel: CurveChannel) {
+        _state.update { it.copy(activeCurveChannel = channel) }
+    }
+
+    fun setCurvePoints(points: List<Pair<Float, Float>>) {
+        val currentAdj = _state.value.adjustments
+        val newAdj = when(_state.value.activeCurveChannel) {
+            CurveChannel.RGB -> currentAdj.copy(curveRGB = points)
+            CurveChannel.RED -> currentAdj.copy(curveRed = points)
+            CurveChannel.GREEN -> currentAdj.copy(curveGreen = points)
+            CurveChannel.BLUE -> currentAdj.copy(curveBlue = points)
+            CurveChannel.LUMINANCE -> currentAdj.copy(curveLuminance = points)
+        }
+        onAdjustmentChange(newAdj)
+        commitAdjustment()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        segmentationHelper.close()
+    }
+
 }

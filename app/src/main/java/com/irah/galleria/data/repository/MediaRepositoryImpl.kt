@@ -9,25 +9,28 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import com.irah.galleria.domain.model.Album
 import com.irah.galleria.domain.model.Media
-import com.irah.galleria.domain.repository.MediaRepository
 import com.irah.galleria.domain.model.MediaOperationState
 import com.irah.galleria.domain.model.OperationType
+import com.irah.galleria.domain.repository.MediaRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
 class MediaRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : MediaRepository {
@@ -164,6 +167,7 @@ class MediaRepositoryImpl @Inject constructor(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override suspend fun moveMedia(mediaList: List<Media>, targetPath: String): android.content.IntentSender? = withContext(Dispatchers.IO) {
         val failedMoves = mutableListOf<Media>()
         val neededPermissions = mutableListOf<Uri>()
@@ -247,10 +251,7 @@ class MediaRepositoryImpl @Inject constructor(
     override suspend fun copyMedia(mediaList: List<Media>, targetPath: String) = withContext(Dispatchers.IO) {
         updateOperationState(MediaOperationState.Running(OperationType.COPY, 0, mediaList.size, ""))
         var successCount = 0
-        
-        // Batch query check for existance could be better, but "INSERT IGNORE" logic via unique constraints isn't easily exposed
-        // For significant speedup, we trust the file system / MediaStore to handle uniqueness or just try insert.
-        // The check was adding O(N) query overhead per file.
+
         
         for ((index, media) in mediaList.withIndex()) {
             updateOperationState(MediaOperationState.Running(OperationType.COPY, index + 1, mediaList.size, media.name))
@@ -305,7 +306,7 @@ class MediaRepositoryImpl @Inject constructor(
             }
             val newUri = contentResolver.insert(collection, contentValues)
             newUri?.let { destUri ->
-                contentResolver.openInputStream(Uri.parse(media.uri))?.use { input ->
+                contentResolver.openInputStream(media.uri.toUri())?.use { input ->
                     contentResolver.openOutputStream(destUri)?.use { output ->
                         // Increase buffer size to 64KB (default is usually 8KB) for faster IO
                         input.copyTo(output, bufferSize = 64 * 1024) 
@@ -344,7 +345,7 @@ class MediaRepositoryImpl @Inject constructor(
     override suspend fun restoreMedia(mediaList: List<Media>): android.content.IntentSender? = withContext(Dispatchers.IO) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
              updateOperationState(MediaOperationState.Running(OperationType.RESTORE, 0, mediaList.size, ""))
-             val uris = mediaList.map { Uri.parse(it.uri) }
+             val uris = mediaList.map { it.uri.toUri() }
              val pi = MediaStore.createTrashRequest(contentResolver, uris, false)
              updateOperationState(MediaOperationState.Completed(OperationType.RESTORE, mediaList.size))
              return@withContext pi.intentSender
@@ -352,12 +353,13 @@ class MediaRepositoryImpl @Inject constructor(
         return@withContext null
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override suspend fun deleteForever(mediaList: List<Media>): android.content.IntentSender? = withContext(Dispatchers.IO) {
         if (mediaList.isEmpty()) return@withContext null
         updateOperationState(MediaOperationState.Running(OperationType.DELETE_FOREVER, 0, mediaList.size, ""))
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val uris = mediaList.map { Uri.parse(it.uri) }
+            val uris = mediaList.map { it.uri.toUri() }
             val pi = MediaStore.createDeleteRequest(contentResolver, uris)
             updateOperationState(MediaOperationState.Completed(OperationType.DELETE_FOREVER, mediaList.size))
             return@withContext pi.intentSender
@@ -367,7 +369,7 @@ class MediaRepositoryImpl @Inject constructor(
                 for ((index, media) in mediaList.withIndex()) {
                     updateOperationState(MediaOperationState.Running(OperationType.DELETE_FOREVER, index + 1, mediaList.size, media.name))
                     try {
-                        contentResolver.delete(Uri.parse(media.uri), null, null)
+                        contentResolver.delete(media.uri.toUri(), null, null)
                         deletedCount++
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -432,7 +434,10 @@ class MediaRepositoryImpl @Inject constructor(
                     val size = cursor.getLong(sizeColumn)
                     val mimeType = cursor.getString(mimeTypeColumn) ?: ""
                     val dateAdded = cursor.getLong(dateAddedColumn)
-                    val dateTaken = cursor.getLong(dateTakenColumn)
+                    var dateTaken = cursor.getLong(dateTakenColumn)
+                    if (dateTaken == 0L) {
+                        dateTaken = dateAdded * 1000L
+                    }
                     val path = cursor.getString(dataColumn) ?: ""
                     val bucketId = cursor.getLong(bucketIdColumn)
                     val bucketName = cursor.getString(bucketNameColumn) ?: "Unknown"
@@ -551,7 +556,10 @@ class MediaRepositoryImpl @Inject constructor(
                     val size = cursor.getLong(sizeColumn)
                     val mimeType = cursor.getString(mimeTypeColumn) ?: ""
                     val dateAdded = cursor.getLong(dateAddedColumn)
-                    val dateTaken = cursor.getLong(dateTakenColumn)
+                    var dateTaken = cursor.getLong(dateTakenColumn)
+                    if (dateTaken == 0L) {
+                        dateTaken = dateAdded * 1000L
+                    }
                     val path = cursor.getString(dataColumn) ?: ""
                     val bucketId = cursor.getLong(bucketIdColumn)
                     val bucketName = cursor.getString(bucketNameColumn) ?: "Unknown"
@@ -663,7 +671,10 @@ class MediaRepositoryImpl @Inject constructor(
                     val size = cursor.getLong(sizeColumn)
                     val mimeType = cursor.getString(mimeTypeColumn) ?: ""
                     val dateAdded = cursor.getLong(dateAddedColumn)
-                    val dateTaken = cursor.getLong(dateTakenColumn)
+                    var dateTaken = cursor.getLong(dateTakenColumn)
+                    if (dateTaken == 0L) {
+                        dateTaken = dateAdded * 1000L
+                    }
                     val path = cursor.getString(dataColumn) ?: ""
                     val bucketId = cursor.getLong(bucketIdColumn)
                     val bucketName = cursor.getString(bucketNameColumn) ?: "Unknown"
@@ -700,15 +711,19 @@ class MediaRepositoryImpl @Inject constructor(
         }
         return mediaList
     }
+    private val favoritesLock = kotlinx.coroutines.sync.Mutex()
+
     override suspend fun toggleFavorite(mediaId: String) {
-        val current = favoritesFlow.value.toMutableSet()
-        if (current.contains(mediaId)) {
-            current.remove(mediaId)
-        } else {
-            current.add(mediaId)
+        favoritesLock.withLock {
+            val current = favoritesFlow.value.toMutableSet()
+            if (current.contains(mediaId)) {
+                current.remove(mediaId)
+            } else {
+                current.add(mediaId)
+            }
+            prefs.edit { putStringSet("favorite_ids", current) }
+            favoritesFlow.value = current
         }
-        prefs.edit().putStringSet("favorite_ids", current).apply()
-        favoritesFlow.update { current }
     }
 
     override fun getFavorites(): Flow<List<Media>> {

@@ -44,6 +44,7 @@ import com.irah.galleria.ui.album.components.AlbumGridItem
 import com.irah.galleria.ui.navigation.Screen
 import com.irah.galleria.ui.theme.GlassScaffold
 import com.irah.galleria.ui.theme.LocalUiMode
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumScreen(
@@ -55,9 +56,9 @@ fun AlbumScreen(
     val settings by settingsViewModel.settings.collectAsState(initial = com.irah.galleria.domain.model.AppSettings())
     val bottomBarVisibility = com.irah.galleria.ui.LocalBottomBarVisibility.current
     val nestedScrollConnection = androidx.compose.runtime.remember {
-        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+        object : NestedScrollConnection {
             var accumulatedScroll = 0f
-            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+            override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
                 val delta = available.y
                 if ((delta > 0 && accumulatedScroll < 0) || (delta < 0 && accumulatedScroll > 0)) {
                     accumulatedScroll = 0f
@@ -100,6 +101,7 @@ fun AlbumScreen(
             if (state.isLoading) {
                 LinearProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
+
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(settings.albumGridCount),
                     modifier = Modifier.fillMaxSize(),
@@ -115,7 +117,7 @@ fun AlbumScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
+                                    .padding(bottom = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 state.smartAlbums.forEach { album ->
@@ -132,6 +134,25 @@ fun AlbumScreen(
                             }
                         }
                     }
+
+                    // Memories Section (Stories)
+                    if (state.memories.isNotEmpty()) {
+                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(settings.albumGridCount) }) {
+                            com.irah.galleria.ui.album.components.MemoriesCarousel(
+                                memories = state.memories,
+                                onMemoryClick = { index ->
+                                    // Pass IDs string just in case, but Viewer currently uses VM state directly
+                                    val ids = state.memories.joinToString(",") { it.id.toString() }
+                                    navController.navigate("story_viewer/$ids/$index")
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                        }
+                    }
+
+
 
                     if (state.albums.isEmpty() && state.smartAlbums.isEmpty()) {
                         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(settings.albumGridCount) }) {

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +36,8 @@ fun SelectionActionMenu(
     isTrash: Boolean = false,
     hasFavorites: Boolean = false, // To toggle heart icon if needed, though usually we just show "Favorite"
     onShare: () -> Unit,
+    onPdfExport: () -> Unit = {},
+    pdfEnabled: Boolean = true,
     onCopy: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
@@ -78,6 +81,12 @@ fun SelectionActionMenu(
                         onClick = onShare
                     )
                     ActionButton(
+                        icon = Icons.Outlined.PictureAsPdf,
+                        label = "PDF",
+                        onClick = onPdfExport,
+                        enabled = pdfEnabled
+                    )
+                    ActionButton(
                         icon = Icons.Outlined.FavoriteBorder,
                         label = "Favorite",
                         onClick = onFavorite
@@ -107,13 +116,15 @@ fun SelectionActionMenu(
 private fun ActionButton(
     icon: ImageVector,
     label: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true
 ) {
-    IconButton(onClick = onClick) {
+    IconButton(onClick = onClick, enabled = enabled) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurface
+            tint = if (enabled) MaterialTheme.colorScheme.onSurface
+                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
         )
     }
 }

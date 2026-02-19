@@ -1,4 +1,4 @@
-package com.irah.galleria.ui.editor
+﻿package com.irah.galleria.ui.editor
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -40,6 +40,10 @@ object BitmapUtils {
         val luminance: Float = 0f 
     )
 
+    enum class BackgroundMode {
+        NONE, REMOVE, BLUR
+    }
+
     data class Adjustments(
         // LIGHT
         val exposure: Float = 0f,
@@ -61,6 +65,13 @@ object BitmapUtils {
         // HSL
         val hsl: Map<HslChannel, HslShift> = emptyMap(),
 
+        // CURVES
+        val curveRGB: List<Pair<Float, Float>> = listOf(0f to 0f, 1f to 1f),
+        val curveRed: List<Pair<Float, Float>> = listOf(0f to 0f, 1f to 1f),
+        val curveGreen: List<Pair<Float, Float>> = listOf(0f to 0f, 1f to 1f),
+        val curveBlue: List<Pair<Float, Float>> = listOf(0f to 0f, 1f to 1f),
+        val curveLuminance: List<Pair<Float, Float>> = listOf(0f to 0f, 1f to 1f),
+
         // DETAIL / EFFECTS
         val clarity: Float = 0f, // Mid-tone contrast (Structure)
         val sharpen: Float = 0f, // Convolution
@@ -68,6 +79,10 @@ object BitmapUtils {
         val denoise: Float = 0f,
         val blur: Float = 0f,
         val dehaze: Float = 0f,
+
+        // BACKGROUND
+        val backgroundMode: BackgroundMode = BackgroundMode.NONE,
+        val backgroundBlurRadius: Float = 0f,
 
         // GEOMETRY
         val rotationDegrees: Float = 0f, // 90, 180, 270...
@@ -81,53 +96,75 @@ object BitmapUtils {
         val filterStrength: Float = 1f
     )
 
+
     suspend fun applyAdjustments(
         original: Bitmap,
         adjustments: Adjustments,
         previewWidth: Int = -1,
         previewHeight: Int = -1,
+        segmentationMask: Bitmap? = null,
         onProgress: ((Float) -> Unit)? = null
     ): Bitmap = withContext(Dispatchers.Default) {
         
         onProgress?.invoke(0.1f)
 
-        // 1. Geometry & Scaling
-        val baseBitmap = applyGeometryAndScale(original, adjustments, previewWidth, previewHeight)
-        onProgress?.invoke(0.3f)
+        // 1. Initial Source Configuration
+        var sourceForGeometry = original
+        if (adjustments.backgroundMode != BackgroundMode.NONE && segmentationMask != null) {
+             sourceForGeometry = applyBackgroundEffect(original, segmentationMask, adjustments)
+        }
         
-        // 2. Global ColorMatrix (Fast) - Exposure, Contrast, Basic Saturation, FILTER
-        val cmBitmap = applyColorMatrixStart(baseBitmap, adjustments)
+        // 2. Geometry & Scaling
+        val geometricBitmap = applyGeometryAndScale(sourceForGeometry, adjustments, previewWidth, previewHeight)
+        
+        onProgress?.invoke(0.4f)
+        
+        // 3. Global ColorMatrix
+        val cmBitmap = applyColorMatrixStart(geometricBitmap, adjustments)
         onProgress?.invoke(0.5f)
         
-        // 3. Pixel Processing (Slow/Detailed) - Tone Curves, HSL, Vignette
-        // Optimization: Only run if needed
+        // 4. Pixel Processing (Curves, HSL, Highlights/Shadows)
         var resultBitmap = cmBitmap
-        if (needsPixelProcessing(adjustments)) {
-             resultBitmap = applyPixelProcessing(cmBitmap, adjustments) { progress ->
-                 // Pixel processing is step 3, mapped to range 0.5 -> 0.8
+        
+        // Calculate curve LUTs
+        val defaultCurve = listOf(0f to 0f, 1f to 1f)
+        val lutRGB = if (adjustments.curveRGB != defaultCurve) calculateCurveLut(adjustments.curveRGB) else null
+        val lutRed = if (adjustments.curveRed != defaultCurve) calculateCurveLut(adjustments.curveRed) else null
+        val lutGreen = if (adjustments.curveGreen != defaultCurve) calculateCurveLut(adjustments.curveGreen) else null
+        val lutBlue = if (adjustments.curveBlue != defaultCurve) calculateCurveLut(adjustments.curveBlue) else null
+        val lutLum = if (adjustments.curveLuminance != defaultCurve) calculateCurveLut(adjustments.curveLuminance) else null
+        
+        val hasCurves = lutRGB != null || lutRed != null || lutGreen != null || lutBlue != null || lutLum != null
+        
+        if (needsPixelProcessing(adjustments) || hasCurves) {
+             resultBitmap = applyPixelProcessing(cmBitmap, adjustments, lutRGB, lutRed, lutGreen, lutBlue, lutLum) { progress ->
                  onProgress?.invoke(0.5f + (progress * 0.3f))
              }
         }
         onProgress?.invoke(0.8f)
         
-        // 4. Convolution (Sharpen) & Structure
+        // 5. Convolution (Sharpen) & Structure
         if (adjustments.sharpen != 0f) {
             resultBitmap = applyConvolution(resultBitmap, adjustments)
         }
         
         if (adjustments.clarity != 0f) {
-             // Structure/Clarity
              resultBitmap = applyStructure(resultBitmap, adjustments.clarity)
         }
         
-        // 5. Blur (Downscale method)
+        // 6. Blur (Global)
         if (adjustments.blur > 0f) {
-             resultBitmap = applyBlur(resultBitmap, adjustments.blur) 
+             resultBitmap = blurBitmap(resultBitmap, adjustments.blur) ?: resultBitmap
         }
 
-        // 6. Denoise (Box Blur Convolution)
+        // 7. Denoise
         if (adjustments.denoise > 0f) {
              resultBitmap = applyDenoise(resultBitmap, adjustments.denoise)
+        }
+        
+        // Cleanup intermediate
+        if (sourceForGeometry != original && sourceForGeometry != geometricBitmap) {
+            sourceForGeometry.recycle()
         }
 
         onProgress?.invoke(1.0f)
@@ -151,7 +188,7 @@ object BitmapUtils {
     ): Bitmap {
         val matrix = Matrix()
         
-        // 1. Rotate & Straighten (Fine Rotation)
+        // 1. Rotate & Straighten
         val totalRotation = adjustments.rotationDegrees + adjustments.straightenDegrees
         if (totalRotation != 0f) {
             matrix.postRotate(totalRotation)
@@ -175,7 +212,6 @@ object BitmapUtils {
                  val targetW = source.width
                  val targetH = source.height
                  
-                 // Center Crop
                  val cropX = ((newW - targetW) / 2).coerceAtLeast(0)
                  val cropY = ((newH - targetH) / 2).coerceAtLeast(0)
                  val cropW = targetW.coerceAtMost(newW - cropX)
@@ -200,17 +236,15 @@ object BitmapUtils {
             srcH = (adjustments.cropRect.height * transformedSource.height).toInt().coerceAtMost(transformedSource.height - srcY)
         }
         
-        // Safety check
         if (srcW <= 0) srcW = 1
         if (srcH <= 0) srcH = 1
         
         // Scale Logic
-        var scale: Float
         if (reqW > 0 && reqH > 0) {
             val targetSize = max(reqW, reqH)
             val sourceSize = max(srcW, srcH)
             if (sourceSize > targetSize) {
-                scale = targetSize.toFloat() / sourceSize.toFloat()
+                val scale = targetSize.toFloat() / sourceSize.toFloat()
                 matrix.postScale(scale, scale)
             }
         }
@@ -218,41 +252,13 @@ object BitmapUtils {
         return Bitmap.createBitmap(transformedSource, srcX, srcY, srcW, srcH, matrix, true)
     }
 
-    private fun applyColorMatrixStart(source: Bitmap, adjustments: Adjustments): Bitmap {
-        val output = createBitmap(source.width, source.height)
-        val canvas = Canvas(output)
-        val paint = Paint()
+    private fun applyColorMatrixStart(source: Bitmap, adj: Adjustments): Bitmap {
         val cm = ColorMatrix()
         
-        // 0. Apply Preset Filter first (base look)
-        if (adjustments.filter != FilterType.NONE) {
-            val base = FilterUtils.createFilterMatrix(adjustments.filter)
-            val scaled = FilterUtils.scaleFilterMatrix(base, adjustments.filterStrength)
-            cm.postConcat(scaled)
-        }
-
-        // Exposure (Gain)
-        if (adjustments.exposure != 0f) {
-            // 2^exposure (e.g. +1 -> 2x, -1 -> 0.5x)
-            val gain = 2.0.pow(adjustments.exposure.toDouble()).toFloat()
-            cm.setScale(gain, gain, gain, 1f)
-        }
-
-        // Brightness (Offset)
-        if (adjustments.brightness != 0f) {
-             val t = adjustments.brightness * 100f // Range approx -100 to 100
-             cm.postConcat(ColorMatrix(floatArrayOf(
-                 1f, 0f, 0f, 0f, t,
-                 0f, 1f, 0f, 0f, t,
-                 0f, 0f, 1f, 0f, t,
-                 0f, 0f, 0f, 1f, 0f
-             )))
-        }
-
-        // Contrast
-        if (adjustments.contrast != 1f) {
-            val scale = adjustments.contrast
-            val translate = (-0.5f * (scale - 1)) * 255f
+        // Brightness, Contrast, Saturation (Global)
+        if (adj.contrast != 1f) {
+            val scale = adj.contrast
+            val translate = (-.5f * scale + .5f) * 255f
             cm.postConcat(ColorMatrix(floatArrayOf(
                 scale, 0f, 0f, 0f, translate,
                 0f, scale, 0f, 0f, translate,
@@ -260,62 +266,183 @@ object BitmapUtils {
                 0f, 0f, 0f, 1f, 0f
             )))
         }
-
-        // Saturation
-        if (adjustments.saturation != 1f) {
-            val sat = ColorMatrix()
-            sat.setSaturation(adjustments.saturation)
-            cm.postConcat(sat)
+        
+        if (adj.saturation != 1f) {
+             cm.postConcat(ColorMatrix().apply { setSaturation(adj.saturation) })
+        }
+        
+        if (adj.exposure != 0f) {
+             val scale = 2.0.pow(adj.exposure.toDouble()).toFloat()
+             val scaleMat = ColorMatrix().apply { setScale(scale, scale, scale, 1f) }
+             cm.postConcat(scaleMat)
+        }
+        
+        if (adj.brightness != 0f) {
+             val t = adj.brightness * 255f
+             val mat = floatArrayOf(
+                 1f, 0f, 0f, 0f, t,
+                 0f, 1f, 0f, 0f, t,
+                 0f, 0f, 1f, 0f, t,
+                 0f, 0f, 0f, 1f, 0f
+             )
+             cm.postConcat(ColorMatrix(mat))
         }
 
+        val paint = Paint()
         paint.colorFilter = ColorMatrixColorFilter(cm)
+        
+        val out = createBitmap(source.width, source.height)
+        val canvas = Canvas(out)
         canvas.drawBitmap(source, 0f, 0f, paint)
-        return output
+        return out
+    }
+    
+    private fun calculateCurveLut(points: List<Pair<Float, Float>>): IntArray {
+        val size = 256
+        val lut = IntArray(size)
+
+        if (points.isEmpty()) {
+            for (i in 0 until size) lut[i] = i
+            return lut
+        }
+
+        // 1. Prepare arrays
+        // Ensure sorted by X
+        val sortedPoints = points.sortedBy { it.first }
+        val n = sortedPoints.size
+        val x = FloatArray(n)
+        val y = FloatArray(n)
+
+        for (i in 0 until n) {
+            x[i] = sortedPoints[i].first * 255f
+            y[i] = sortedPoints[i].second * 255f
+        }
+
+        // 2. Compute slopes (secants)
+        // delta[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+        val delta = FloatArray(n - 1)
+        for (i in 0 until n - 1) {
+            val h = x[i+1] - x[i]
+            if (h == 0f) {
+                delta[i] = 0f 
+            } else {
+                delta[i] = (y[i+1] - y[i]) / h
+            }
+        }
+
+        // 3. Compute tangents (m)
+        val m = FloatArray(n)
+        
+        // Endpoints
+        m[0] = delta[0]
+        m[n-1] = delta[n-2]
+
+        // Internal points: average of adjacent secants
+        for (i in 1 until n - 1) {
+            m[i] = (delta[i-1] + delta[i]) / 2f
+        }
+
+        // 4. Enforce Monotonicity (prevent overshoot)
+        if (n > 2) {
+            for (i in 0 until n - 1) {
+                if (delta[i] == 0f) {
+                    m[i] = 0f
+                    m[i+1] = 0f
+                } else {
+                    val alpha = m[i] / delta[i]
+                    val beta = m[i+1] / delta[i]
+                    val distance = alpha * alpha + beta * beta
+                    if (distance > 9f) {
+                        val tau = 3f / sqrt(distance)
+                        m[i] = tau * alpha * delta[i]
+                        m[i+1] = tau * beta * delta[i]
+                    }
+                }
+            }
+        }
+
+        // 5. Generate LUT
+        for (i in 0 until size) {
+            val tX = i.toFloat()
+            
+            // Handle out of bounds
+            if (tX <= x[0]) {
+                lut[i] = y[0].toInt().coerceIn(0, 255)
+                continue
+            }
+            if (tX >= x[n-1]) {
+                lut[i] = y[n-1].toInt().coerceIn(0, 255)
+                continue
+            }
+
+            // Find segment
+            var k = 0
+            while (k < n - 2 && tX > x[k+1]) {
+                k++
+            }
+
+            val h = x[k+1] - x[k]
+            if (h == 0f) {
+                lut[i] = y[k].toInt().coerceIn(0, 255)
+            } else {
+                val t = (tX - x[k]) / h
+                val t2 = t * t
+                val t3 = t2 * t
+                val h00 = 2 * t3 - 3 * t2 + 1
+                val h10 = t3 - 2 * t2 + t
+                val h01 = -2 * t3 + 3 * t2
+                val h11 = t3 - t2
+                
+                val valY = h00 * y[k] + h10 * h * m[k] + h01 * y[k+1] + h11 * h * m[k+1]
+                lut[i] = valY.toInt().coerceIn(0, 255)
+            }
+        }
+        return lut
     }
 
     private suspend fun applyPixelProcessing(
         source: Bitmap, 
         adj: Adjustments,
+        lutRGB: IntArray?,
+        lutRed: IntArray?,
+        lutGreen: IntArray?,
+        lutBlue: IntArray?,
+        lutLum: IntArray?,
         onProgress: ((Float) -> Unit)? = null
     ): Bitmap = withContext(Dispatchers.Default) {
         val width = source.width
         val height = source.height
         val workingBitmap = if (source.isMutable) source else source.copy(Bitmap.Config.ARGB_8888, true)
-        if (workingBitmap == null) return@withContext source // Fallback
+        if (workingBitmap == null) return@withContext source
+        
         val cores = Runtime.getRuntime().availableProcessors()
-        val chunkHeight = max(height / cores, 10) // Ensure at least 10 rows
+        val chunkHeight = max(height / cores, 10)
         val toneLut = IntArray(256)
+        
         for (i in 0..255) {
             var x = i / 255f
-            
             if (adj.shadows != 0f) {
                 val influence = (1f - x).pow(3) 
                 x += adj.shadows * influence * 0.5f
             }
-
             if (adj.highlights != 0f) {
                 val influence = x.pow(3)
                 x += adj.highlights * influence * 0.5f 
             }
-            
-            if (adj.whites != 0f) {
-                 if (x > 0.7f) {
-                     val t = (x - 0.7f) / 0.3f
-                     x += adj.whites * t * 0.2f
-                 }
+            if (adj.whites != 0f && x > 0.7f) {
+                val t = (x - 0.7f) / 0.3f
+                x += adj.whites * t * 0.2f
             }
-             if (adj.blacks != 0f) {
-                 if (x < 0.3f) {
-                     val t = (0.3f - x) / 0.3f
-                     x += adj.blacks * t * 0.2f
-                 }
+            if (adj.blacks != 0f && x < 0.3f) {
+                 val t = (0.3f - x) / 0.3f
+                 x += adj.blacks * t * 0.2f
             }
             toneLut[i] = (x.coerceIn(0f, 1f) * 255).toInt()
         }
 
-        val tempAdj = adj.temperature * 40 // Range +/- 40
-        val tintAdj = adj.tint * 20        // Range +/- 20
-        val skinToneAdj = adj.skinTone     // -1 to 1
+        val tempAdj = adj.temperature * 40 
+        val tintAdj = adj.tint * 20        
+        val skinToneAdj = adj.skinTone     
 
         val totalChunks = (height + chunkHeight - 1) / chunkHeight
         val progressCounter = AtomicInteger(0)
@@ -346,12 +473,14 @@ object BitmapUtils {
                         var b = p and 0xFF
                         val a = (p shr 24) and 0xFF
 
+                        // Temperature/Tint
                         if (tempAdj != 0f || tintAdj != 0f) {
                             r = (r + tempAdj).toInt().coerceIn(0, 255)
                             b = (b - tempAdj).toInt().coerceIn(0, 255)
                             g = (g + tintAdj).toInt().coerceIn(0, 255)
                         }
 
+                        // Skin Tone
                         if (skinToneAdj != 0f) {
                              if (g in (b + 1)..<r) {
                                 val gRatio = if (r > 0) g.toFloat()/r else 0f
@@ -378,7 +507,7 @@ object BitmapUtils {
                              b = (b - (dehaze * 10)).toInt().coerceIn(0, 255)
                         }
 
-                        // C. Vibrance
+                        // Vibrance
                         if (adj.vibrance != 0f) {
                             val max = max(r, max(g, b))
                             val min = min(r, min(g, b))
@@ -389,51 +518,75 @@ object BitmapUtils {
                             b = (b + b * vib).toInt().coerceIn(0, 255)
                         }
 
-                        // D. Tone Mapping
+                        // Tone Mapping
                         r = toneLut[r]
                         g = toneLut[g]
                         b = toneLut[b]
 
-                        // E. Vignette (Optimized & Smooth)
+                        // Vignette
                          if (adj.vignette > 0f) {
                             val dx = cx - width / 2f
                             val dist = sqrt(dx * dx + dySq) * invMaxRad
-                            
-                            // SmoothStep Falloff
-                            // Start darkening at 0.3 (30% from center)
-                            // Full effect at 1.0 (corners)
                             val edge0 = 0.3f
                             val edge1 = 1.0f
                             val t = ((dist - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
                             val smoothT = t * t * (3f - 2f * t)
-                            
                             val darkness = smoothT * adj.vignette
-                            // Apply darkness (multiply)
                             val f = 1f - darkness
-                            
                             r = (r * f).toInt()
                             g = (g * f).toInt()
                             b = (b * f).toInt()
                         }
 
-                        // F. HSL (Heavy - Smooth Interpolation)
-                        // ... HSL Logic ...
+                        // Apply Curves
+                        // 1. Master RGB
+                        if (lutRGB != null) {
+                            r = lutRGB[r]
+                            g = lutRGB[g]
+                            b = lutRGB[b]
+                        }
+                        
+                        // 2. Individual Channels
+                        if (lutRed != null) r = lutRed[r]
+                        if (lutGreen != null) g = lutGreen[g]
+                        if (lutBlue != null) b = lutBlue[b]
+                        
+                        // 3. Luminance
+                        if (lutLum != null) {
+                            // Y = 0.299R + 0.587G + 0.114B
+                            // Integer approximation: (R*77 + G*150 + B*29) >> 8
+                            val y = (r * 77 + g * 150 + b * 29) shr 8
+                            val newY = lutLum[y.coerceIn(0, 255)]
+                            
+                            if (y > 0) {
+                                val scale = newY.toFloat() / y
+                                r = (r * scale).toInt().coerceIn(0, 255)
+                                g = (g * scale).toInt().coerceIn(0, 255)
+                                b = (b * scale).toInt().coerceIn(0, 255)
+                            } else {
+                                if (newY > 0) {
+                                    r = newY
+                                    g = newY
+                                    b = newY
+                                }
+                            }
+                        }
+
+                        // HSL (Simplistic)
                         if (adj.hsl.isNotEmpty()) {
                              val hsv = FloatArray(3)
                              Color.RGBToHSV(r, g, b, hsv)
-                             // ... (Rest of HSL logic remains same, just ensure variable scope)
                              
                              val hue = hsv[0]
                              var satScale = 1f
                              var lumScale = 1f
                              var hueShift = 0f
 
-                            var c1: HslChannel = HslChannel.RED
+                             var c1: HslChannel = HslChannel.RED
                              var c2: HslChannel = HslChannel.RED
                              var t = 0f
                              
-                             if (hue < 30) { c1 = HslChannel.RED; c2 = HslChannel.ORANGE; t =
-                                 hue / 30f }
+                             if (hue < 30) { c1 = HslChannel.RED; c2 = HslChannel.ORANGE; t = hue / 30f }
                              else if (hue < 60) { c1 = HslChannel.ORANGE; c2 = HslChannel.YELLOW; t = (hue - 30) / 30f }
                              else if (hue < 120) { c1 = HslChannel.YELLOW; c2 = HslChannel.GREEN; t = (hue - 60) / 60f }
                              else if (hue < 180) { c1 = HslChannel.GREEN; c2 = HslChannel.AQUA; t = (hue - 120) / 60f }
@@ -473,7 +626,6 @@ object BitmapUtils {
                     }
                 }
                 
-                // Write back
                 workingBitmap.setPixels(chunkPixels, 0, width, 0, startY, width, currentChunkHeight)
                 
                 val current = progressCounter.incrementAndGet()
@@ -483,13 +635,10 @@ object BitmapUtils {
             jobs.add(job)
         }
         
-        // Await all chunks
         jobs.forEach { it.await() }
 
         return@withContext workingBitmap
     }
-
-
 
     private suspend fun applyConvolution(source: Bitmap, adj: Adjustments): Bitmap = withContext(Dispatchers.Default) {
         val width = source.width
@@ -612,13 +761,141 @@ object BitmapUtils {
         return@withContext output
     }
 
+    private suspend fun applyBackgroundEffect(
+        original: Bitmap,
+        mask: Bitmap,
+        adj: Adjustments
+    ): Bitmap = withContext(Dispatchers.Default) {
+        val width = original.width
+        val height = original.height
+
+        val maxMaskDim = 1024
+        val shouldDownscaleMask = width > maxMaskDim || height > maxMaskDim
+        
+        val workingMaskWidth = if (shouldDownscaleMask) {
+            val ratio = width.toFloat() / height
+            if (width > height) maxMaskDim else (maxMaskDim * ratio).toInt()
+        } else width
+        
+        val workingMaskHeight = if (shouldDownscaleMask) {
+            val ratio = height.toFloat() / width
+            if (height > width) maxMaskDim else (maxMaskDim * ratio).toInt()
+        } else height
+        
+        val scaledMask = mask.scale(workingMaskWidth, workingMaskHeight)
+        
+        // 2. Feather Mask (Blur the alpha/content)
+        // Ensure mutable ARGB for stackBlur
+        val blurMask = if (scaledMask.config != Bitmap.Config.ARGB_8888 || !scaledMask.isMutable) {
+            scaledMask.copy(Bitmap.Config.ARGB_8888, true)
+        } else {
+            scaledMask
+        }
+        
+        try {
+            stackBlur(
+                getPixelsOrFail(blurMask),
+                blurMask.width,
+                blurMask.height,
+                3 // Small radius for edge smoothing (relative to 1024px)
+            )
+        } catch (e: OutOfMemoryError) {
+             android.util.Log.e("BitmapUtils", "OOM during mask feathering", e)
+             // Continue without feathering if OOM
+        }
+        val finalMask = if (blurMask.width != width || blurMask.height != height) {
+            blurMask.scale(width, height)
+        } else {
+             blurMask
+        }
+
+        val output = createBitmap(width, height)
+
+        val blurredBg = if (adj.backgroundMode == BackgroundMode.BLUR) {
+             val radius = adj.backgroundBlurRadius
+             blurBitmap(original, radius) // Returns full-size bitmap (using optimization internally)
+        } else {
+             null
+        }
+
+        // 3. Alpha Blend Row-by-Row to avoid huge IntArray allocations
+        val rowPixels = IntArray(width)
+        val rowMaskPixels = IntArray(width)
+        val rowBgPixels = if (blurredBg != null) IntArray(width) else null
+        
+        for (y in 0 until height) {
+            // Read rows
+            original.getPixels(rowPixels, 0, width, 0, y, width, 1)
+            finalMask.getPixels(rowMaskPixels, 0, width, 0, y, width, 1)
+            if (blurredBg != null && rowBgPixels != null) {
+                blurredBg.getPixels(rowBgPixels, 0, width, 0, y, width, 1)
+            }
+            
+            for (x in 0 until width) {
+                val maskVal = (rowMaskPixels[x] ushr 24) and 0xFF
+                val subjectAlpha = maskVal / 255f
+                
+                if (subjectAlpha >= 1f) {
+                    // Keep original (rowPixels[x] is already original)
+                } else if (subjectAlpha <= 0f) {
+                    if (rowBgPixels != null) {
+                        rowPixels[x] = rowBgPixels[x]
+                    } else {
+                        rowPixels[x] = Color.TRANSPARENT
+                    }
+                } else {
+                    val fg = rowPixels[x]
+                    val bg = rowBgPixels?.get(x) ?: Color.TRANSPARENT
+                    rowPixels[x] = blendColors(bg, fg, subjectAlpha)
+                }
+            }
+            // Write row
+            output.setPixels(rowPixels, 0, width, 0, y, width, 1)
+        }
+        
+        // Recycle temps
+        if (scaledMask != mask) scaledMask.recycle()
+        if (blurMask != scaledMask) blurMask.recycle()
+        if (finalMask != blurMask) finalMask.recycle()
+        blurredBg?.recycle()
+        
+        return@withContext output
+    }
+    
+    private fun blendColors(bg: Int, fg: Int, ratio: Float): Int {
+        val inv = 1f - ratio
+        
+        val aBg = (bg shr 24) and 0xFF
+        val rBg = (bg shr 16) and 0xFF
+        val gBg = (bg shr 8) and 0xFF
+        val bBg = bg and 0xFF
+        
+        val aFg = (fg shr 24) and 0xFF
+        val rFg = (fg shr 16) and 0xFF
+        val gFg = (fg shr 8) and 0xFF
+        val bFg = fg and 0xFF
+        
+        val a = (aBg * inv + aFg * ratio).toInt()
+        val r = (rBg * inv + rFg * ratio).toInt()
+        val g = (gBg * inv + gFg * ratio).toInt()
+        val b = (bBg * inv + bFg * ratio).toInt()
+        
+        return (a shl 24) or (r shl 16) or (g shl 8) or b
+    }
+    
+    private fun getPixelsOrFail(bitmap: Bitmap): IntArray {
+        val p = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(p, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        return p
+    }
+
     private suspend fun applyStructure(source: Bitmap, amount: Float): Bitmap = withContext(Dispatchers.Default) {
         if (amount <= 0f) return@withContext source
         
         val width = source.width
         val height = source.height
         
-        val radius = 5.coerceAtLeast((width * 0.005f).toInt()) // Adaptive radius approx 0.5% of width
+        val radius = 5.coerceAtLeast((width * 0.005f).toInt())
         
         val blurredIndices = IntArray(width * height)
         source.getPixels(blurredIndices, 0, width, 0, 0, width, height)
@@ -656,21 +933,55 @@ object BitmapUtils {
         return@withContext output
     }
 
-    private fun applyBlur(source: Bitmap, amount: Float): Bitmap {
+    fun blurBitmap(source: Bitmap, amount: Float): Bitmap? {
         if (amount <= 0f) return source
-        val radius = (amount * 50).toInt().coerceAtLeast(1)
-        
+        // Optimization: Don't blur giant bitmaps. Downscale, blur, upscale.
+        // Max dimension for blur calculation
+        val maxDim = 1024
         val width = source.width
         val height = source.height
-        val newBitmap = source.copy(Bitmap.Config.ARGB_8888, true)
         
-        val pixels = IntArray(width * height)
-        newBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+        val shouldDownscale = width > maxDim || height > maxDim
         
-        stackBlur(pixels, width, height, radius)
+        val targetWidth = if (shouldDownscale) {
+             val ratio = width.toFloat() / height
+             if (width > height) maxDim else (maxDim * ratio).toInt()
+        } else width
         
-        newBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-        return newBitmap
+        val targetHeight = if (shouldDownscale) {
+             val ratio = height.toFloat() / width
+             if (height > width) maxDim else (maxDim * ratio).toInt()
+        } else height
+        
+        // 1. Create scaled input if needed
+        val input = if (shouldDownscale) {
+            source.scale(targetWidth, targetHeight)
+        } else {
+             source.copy(Bitmap.Config.ARGB_8888, true)
+        }
+        
+        val radius = (amount * 50).toInt().coerceAtLeast(1)
+        val pixels = IntArray(input.width * input.height)
+        input.getPixels(pixels, 0, input.width, 0, 0, input.width, input.height)
+        
+        try {
+            stackBlur(pixels, input.width, input.height, radius)
+            input.setPixels(pixels, 0, input.width, 0, 0, input.width, input.height)
+            
+            // 2. Return result (Upscale if we downscaled)
+            return if (shouldDownscale) {
+                val upscaled = input.scale(width, height)
+                input.recycle()
+                upscaled
+            } else {
+                input
+            }
+            
+        } catch (e: OutOfMemoryError) {
+             android.util.Log.e("BitmapUtils", "OOM in blurBitmap", e)
+             if (shouldDownscale) input.recycle()
+             return source // Return unblurred on error
+        }
     }
     
     // Stack Blur Algorithm

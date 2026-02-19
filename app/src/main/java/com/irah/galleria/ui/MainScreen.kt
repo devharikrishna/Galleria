@@ -26,12 +26,14 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -207,6 +209,32 @@ fun MainScreen() {
                     arguments = Screen.Editor.arguments
                 ) {
                     EditorScreen(navController = navController)
+                }
+                composable(
+                    route = "story_viewer/{mediaIds}/{startIndex}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("mediaIds") { type = androidx.navigation.NavType.StringType },
+                        androidx.navigation.navArgument("startIndex") { type = androidx.navigation.NavType.IntType }
+                    )
+                ) { backStackEntry ->
+                    // Uses StoryViewModel which automatically reads "mediaIds" from SavedStateHandle
+                    val viewModel: com.irah.galleria.ui.story.StoryViewModel = hiltViewModel()
+                    val mediaList by viewModel.mediaList.collectAsState()
+                    val startIndex = backStackEntry.arguments?.getInt("startIndex") ?: 0
+                    
+                    if (mediaList.isNotEmpty()) {
+                        com.irah.galleria.ui.story.StoryViewerScreen(
+                            navController = navController,
+                            mediaList = mediaList,
+                            startIndex = startIndex
+                        )
+                    }
+                }
+                composable(
+                    route = Screen.PdfExport.routeWithArgs,
+                    arguments = Screen.PdfExport.arguments
+                ) {
+                    com.irah.galleria.ui.pdfexport.PdfExportScreen(navController = navController)
                 }
             }
         }

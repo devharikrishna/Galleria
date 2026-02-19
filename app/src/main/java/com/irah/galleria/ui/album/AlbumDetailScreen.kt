@@ -289,6 +289,11 @@ fun AlbumDetailScreen(
                 .padding(bottom = if (operationState is com.irah.galleria.domain.model.MediaOperationState.Running) 80.dp else 16.dp),
             isTrash = state.isTrash,
             onShare = { viewModel.shareSelectedMedia(navController.context) },
+            onPdfExport = {
+                val ids = state.selectedMediaIds.joinToString(",")
+                navController.navigate("${com.irah.galleria.ui.navigation.Screen.PdfExport.route}/$ids")
+            },
+            pdfEnabled = state.media.filter { state.selectedMediaIds.contains(it.id) }.none { it.isVideo },
             onCopy = {
                 isCopyOperation = true
                 showAlbumSelectionSheet = true

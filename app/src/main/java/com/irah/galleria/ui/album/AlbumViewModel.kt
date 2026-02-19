@@ -18,6 +18,7 @@ import javax.inject.Inject
 data class AlbumState(
     val albums: List<Album> = emptyList(),
     val smartAlbums: List<Album> = emptyList(),
+    val memories: List<com.irah.galleria.domain.model.Media> = emptyList(),
     val isLoading: Boolean = false,
     val mediaOrder: MediaOrder = MediaOrder.Date(OrderType.Descending)
 )
@@ -25,7 +26,8 @@ data class AlbumState(
 @HiltViewModel
 class AlbumViewModel @Inject constructor(
     private val getAlbumsUseCase: GetAlbumsUseCase,
-    private val mediaRepository: MediaRepository
+    private val mediaRepository: MediaRepository,
+    private val getMemoriesUseCase: com.irah.galleria.domain.usecase.GetMemoriesUseCase
 ) : ViewModel() {
     private val _state = MutableStateFlow(AlbumState())
     val state: StateFlow<AlbumState> = _state.asStateFlow()
@@ -39,8 +41,9 @@ class AlbumViewModel @Inject constructor(
                 getAlbumsUseCase(mediaOrder = _state.value.mediaOrder),
                 mediaRepository.getFavorites(),
                 mediaRepository.getTrashedMedia(),
-                mediaRepository.getScreenshots()
-            ) { albums, favorites, trash, screenshots ->
+                mediaRepository.getScreenshots(),
+                getMemoriesUseCase.getRandomMemories(10)
+            ) { albums, favorites, trash, screenshots, randomMemories ->
                 val smartAlbums = mutableListOf<Album>()
                 
                 // 1. Favorites (-2)
@@ -76,17 +79,18 @@ class AlbumViewModel @Inject constructor(
                 // Filter out "Screenshots" from regular albums to avoid duplicates
                 val filteredAlbums = albums.filter { !it.name.equals("Screenshots", ignoreCase = true) }
                 
-                Pair(smartAlbums, filteredAlbums)
+                Triple(smartAlbums, filteredAlbums, randomMemories)
             }
             .onStart { _state.value = _state.value.copy(isLoading = true) }
             .catch { 
                 it.printStackTrace()
                 _state.value = _state.value.copy(isLoading = false) 
             }
-            .collect { (smartAlbums, regularAlbums) ->
+            .collect { (smartAlbums, regularAlbums, randomMemories) ->
                  _state.value = _state.value.copy(
                     albums = regularAlbums,
                     smartAlbums = smartAlbums,
+                    memories = randomMemories,
                     isLoading = false
                  )
             }
