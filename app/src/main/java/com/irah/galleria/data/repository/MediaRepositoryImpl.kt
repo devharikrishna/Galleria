@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.withLock
@@ -46,7 +48,7 @@ class MediaRepositoryImpl @Inject constructor(
         val mediaFlow = callbackFlow {
             val observer = object : ContentObserver(null) {
                 override fun onChange(selfChange: Boolean) {
-                    trySend(queryMedia())
+                    trySend(Unit)
                 }
             }
             contentResolver.registerContentObserver(
@@ -67,11 +69,14 @@ class MediaRepositoryImpl @Inject constructor(
                 true,
                 observer
             )
-            trySend(queryMedia())
+            trySend(Unit)
             awaitClose {
                 contentResolver.unregisterContentObserver(observer)
             }
-        }.flowOn(Dispatchers.IO)
+        }.conflate()
+         .debounce(300L)
+         .map { queryMedia() }
+         .flowOn(Dispatchers.IO)
 
         return combine(mediaFlow, favoritesFlow) { mediaList, favs ->
              mediaList.map { it.copy(isFavorite = favs.contains(it.id.toString())) }
@@ -80,7 +85,7 @@ class MediaRepositoryImpl @Inject constructor(
     override fun getAlbums(): Flow<List<Album>> = callbackFlow {
         val observer = object : ContentObserver(null) {
             override fun onChange(selfChange: Boolean) {
-                trySend(queryAlbums())
+                trySend(Unit)
             }
         }
         val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -89,14 +94,17 @@ class MediaRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
         contentResolver.registerContentObserver(uri, true, observer)
-        trySend(queryAlbums())
+        trySend(Unit)
         awaitClose { contentResolver.unregisterContentObserver(observer) }
-    }.flowOn(Dispatchers.IO)
+    }.conflate()
+     .debounce(300L)
+     .map { queryAlbums() }
+     .flowOn(Dispatchers.IO)
     override fun getMediaByAlbumId(albumId: Long): Flow<List<Media>> {
         val mediaFlow = callbackFlow {
             val observer = object : ContentObserver(null) {
                 override fun onChange(selfChange: Boolean) {
-                    trySend(queryMedia(albumId))
+                    trySend(Unit)
                 }
             }
             val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -105,9 +113,12 @@ class MediaRepositoryImpl @Inject constructor(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI
             }
             contentResolver.registerContentObserver(uri, true, observer)
-            trySend(queryMedia(albumId))
+            trySend(Unit)
             awaitClose { contentResolver.unregisterContentObserver(observer) }
-        }.flowOn(Dispatchers.IO)
+        }.conflate()
+         .debounce(300L)
+         .map { queryMedia(albumId) }
+         .flowOn(Dispatchers.IO)
         
         return combine(mediaFlow, favoritesFlow) { mediaList, favs ->
              mediaList.map { it.copy(isFavorite = favs.contains(it.id.toString())) }
@@ -329,7 +340,7 @@ class MediaRepositoryImpl @Inject constructor(
     override fun getTrashedMedia(): Flow<List<Media>> = callbackFlow {
         val observer = object : ContentObserver(null) {
             override fun onChange(selfChange: Boolean) {
-                trySend(queryTrashedMedia())
+                trySend(Unit)
             }
         }
         val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -338,9 +349,12 @@ class MediaRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
         contentResolver.registerContentObserver(uri, true, observer)
-        trySend(queryTrashedMedia())
+        trySend(Unit)
         awaitClose { contentResolver.unregisterContentObserver(observer) }
-    }.flowOn(Dispatchers.IO)
+    }.conflate()
+     .debounce(300L)
+     .map { queryTrashedMedia() }
+     .flowOn(Dispatchers.IO)
 
     override suspend fun restoreMedia(mediaList: List<Media>): android.content.IntentSender? = withContext(Dispatchers.IO) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

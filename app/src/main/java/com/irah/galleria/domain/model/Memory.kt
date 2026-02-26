@@ -1,5 +1,8 @@
 package com.irah.galleria.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Memory(
     val id: Long,
     val title: String,

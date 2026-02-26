@@ -40,6 +40,7 @@ class SettingsRepositoryImpl @Inject constructor(
         val UI_MODE = stringPreferencesKey("ui_mode")
         val TRASH_ENABLED = booleanPreferencesKey("trash_enabled")
         val BLOB_ANIMATION = stringPreferencesKey("blob_animation")
+        val VERTICAL_SWIPE = booleanPreferencesKey("vertical_swipe")
     }
     override val settings: Flow<AppSettings> = dataStore.data.map { preferences ->
         AppSettings(
@@ -69,7 +70,8 @@ class SettingsRepositoryImpl @Inject constructor(
             trashEnabled = preferences[Keys.TRASH_ENABLED] ?: true,
             blobAnimation = try {
                 com.irah.galleria.domain.model.BackgroundAnimationType.valueOf(preferences[Keys.BLOB_ANIMATION] ?: com.irah.galleria.domain.model.BackgroundAnimationType.WAVE.name)
-            } catch (_: Exception) { com.irah.galleria.domain.model.BackgroundAnimationType.WAVE }
+            } catch (_: Exception) { com.irah.galleria.domain.model.BackgroundAnimationType.WAVE },
+            verticalSwipe = preferences[Keys.VERTICAL_SWIPE] ?: true
         )
     }
     override suspend fun setThemeMode(mode: ThemeMode) {
@@ -125,5 +127,8 @@ class SettingsRepositoryImpl @Inject constructor(
     }
     override suspend fun setBlobAnimation(type: com.irah.galleria.domain.model.BackgroundAnimationType) {
         dataStore.edit { it[Keys.BLOB_ANIMATION] = type.name }
+    }
+    override suspend fun setVerticalSwipe(enabled: Boolean) {
+        dataStore.edit { it[Keys.VERTICAL_SWIPE] = enabled }
     }
 }

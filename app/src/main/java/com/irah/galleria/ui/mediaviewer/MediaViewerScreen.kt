@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -113,21 +114,50 @@ fun MediaViewerScreen(
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                val media = state.mediaList[page]
-                Box(modifier = Modifier
-                    .fillMaxSize()
-                ) {
-                    MediaPage(
-                        media = media,
-                        isSelected = pagerState.currentPage == page,
-                        showControls = showControls,
-                        onTap = { showControls = !showControls },
-                        onVideoControlVisibilityChange = { showControls = it }
-                    )
+            var scrollingEnabled by remember { mutableStateOf(true) }
+            if (settings.verticalSwipe) {
+                VerticalPager(
+                    state = pagerState,
+                    userScrollEnabled = scrollingEnabled,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    val media = state.mediaList[page]
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        MediaPage(
+                            media = media,
+                            isSelected = pagerState.currentPage == page,
+                            showControls = showControls,
+                            onTap = { showControls = !showControls },
+                            onVideoControlVisibilityChange = { showControls = it },
+                            onZoomChange = { isZoomed -> 
+                                if (pagerState.currentPage == page) {
+                                    scrollingEnabled = !isZoomed
+                                }
+                            }
+                        )
+                    }
+                }
+            } else {
+                HorizontalPager(
+                    state = pagerState,
+                    userScrollEnabled = scrollingEnabled,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    val media = state.mediaList[page]
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        MediaPage(
+                            media = media,
+                            isSelected = pagerState.currentPage == page,
+                            showControls = showControls,
+                            onTap = { showControls = !showControls },
+                            onVideoControlVisibilityChange = { showControls = it },
+                            onZoomChange = { isZoomed -> 
+                                if (pagerState.currentPage == page) {
+                                    scrollingEnabled = !isZoomed
+                                }
+                            }
+                        )
+                    }
                 }
             }
             val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -262,7 +292,15 @@ fun MediaViewerScreen(
         if (showInfoSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showInfoSheet = false },
-                sheetState = rememberModalBottomSheetState()
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                dragHandle = {
+                    androidx.compose.material3.BottomSheetDefaults.DragHandle(
+                        width = 48.dp,
+                        height = 6.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                }
             ) {
                 MediaInfoContent(media = currentMedia)
             }
@@ -285,7 +323,8 @@ fun MediaPage(
     isSelected: Boolean,
     showControls: Boolean,
     onTap: () -> Unit,
-    onVideoControlVisibilityChange: (Boolean) -> Unit
+    onVideoControlVisibilityChange: (Boolean) -> Unit,
+    onZoomChange: (Boolean) -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (media.isVideo) {
@@ -306,7 +345,8 @@ fun MediaPage(
                 com.irah.galleria.ui.common.ZoomableImage(
                     painter = painter,
                     contentDescription = media.name,
-                    onTap = onTap
+                    onTap = onTap,
+                    onZoomChange = onZoomChange
                 )
                 Icon(
                     imageVector = Icons.Default.PlayCircleOutline,
@@ -325,7 +365,8 @@ fun MediaPage(
             com.irah.galleria.ui.common.ZoomableImage(
                 painter = painter,
                 contentDescription = media.name,
-                onTap = onTap
+                onTap = onTap,
+                onZoomChange = onZoomChange
             )
         }
     }

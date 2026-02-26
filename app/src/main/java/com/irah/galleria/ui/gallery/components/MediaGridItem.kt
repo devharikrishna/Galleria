@@ -29,6 +29,13 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import com.irah.galleria.domain.model.Media
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.runtime.getValue
+import androidx.core.net.toUri
+
 @Composable
 fun MediaGridItem(
     media: Media,
@@ -48,18 +55,47 @@ fun MediaGridItem(
         modifier.aspectRatio(ratio)
     }
 
-    val shape = remember(cornerRadius) { RoundedCornerShape(cornerRadius.dp) }
+    val targetScale = if (isSelected) 0.85f else 1f
+    val scale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = spring(
+            dampingRatio = if (isSelected) Spring.DampingRatioMediumBouncy else Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "selection_scale"
+    )
+
+    val targetCornerRadius = if (isSelected) 32.dp else cornerRadius.dp
+    val animatedCornerRadius by animateDpAsState(
+        targetValue = targetCornerRadius,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "selection_corner_radius"
+    )
+
+    val shape = remember(animatedCornerRadius) { RoundedCornerShape(animatedCornerRadius) }
     
     val context = LocalContext.current
     val imageRequest = remember(media.uri, itemSizePx) {
+        // Optimization: Use MediaStore THUMBNAIL URI if possible instead of loading the full image and downscaling
+        val uriToLoad = if (media.id > 0) {
+            android.provider.MediaStore.Files.getContentUri("external").buildUpon()
+                .appendPath(media.id.toString())
+                .build()
+        } else {
+            media.uri.toUri() // fallback to original string URI
+        }
+
         ImageRequest.Builder(context)
-            .data(media.uri)
+            .data(uriToLoad)
             .size(itemSizePx)
             .scale(coil.size.Scale.FILL)
             .precision(coil.size.Precision.EXACT)
             .allowHardware(true)
             .allowRgb565(true)
-            .crossfade(true) // Enable crossfade for smoother loading
+            .crossfade(true) 
             .dispatcher(kotlinx.coroutines.Dispatchers.IO)
             .build()
     }
@@ -68,6 +104,8 @@ fun MediaGridItem(
         modifier = containerModifier
             .padding(2.dp)
             .graphicsLayer {
+                this.scaleX = scale
+                this.scaleY = scale
                 this.shape = shape
                 this.clip = true
             }
@@ -92,7 +130,7 @@ fun MediaGridItem(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(36.dp)
                 )
             }
         }

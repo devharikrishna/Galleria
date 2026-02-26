@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.RoundedCorner
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.SwipeVertical
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -140,12 +141,13 @@ fun SettingsScreen(
             item {
                 SettingsGroup(title = "Developed By", icon = Icons.Outlined.CodeOff) {
                     val context = androidx.compose.ui.platform.LocalContext.current
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    SettingsItemSurface(position = SettingsItemPosition.SINGLE) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
@@ -209,77 +211,88 @@ fun SettingsScreen(
                             )
                         }
                     }
+                    }
                 }
             }
             item {
                 SettingsGroup(title = "Appearance", icon = Icons.Outlined.Palette) {
-                    Text(
-                        "Theme",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ThemeChip(
-                            selected = settings.themeMode == ThemeMode.SYSTEM,
-                            label = "System",
-                            icon = Icons.Outlined.Android,
-                            onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) }
-                        )
-                        ThemeChip(
-                            selected = settings.themeMode == ThemeMode.LIGHT,
-                            label = "Light",
-                            icon = Icons.Outlined.LightMode,
-                            onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) }
-                        )
-                        ThemeChip(
-                            selected = settings.themeMode == ThemeMode.DARK,
-                            label = "Dark",
-                            icon = Icons.Outlined.DarkMode,
-                            onClick = { viewModel.setThemeMode(ThemeMode.DARK) }
-                        )
+                    SettingsItemSurface(position = SettingsItemPosition.FIRST) {
+                        Column {
+                            Text(
+                                "Theme",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(top = 8.dp)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp).padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ThemeChip(
+                                    selected = settings.themeMode == ThemeMode.SYSTEM,
+                                    label = "System",
+                                    icon = Icons.Outlined.Android,
+                                    onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) }
+                                )
+                                ThemeChip(
+                                    selected = settings.themeMode == ThemeMode.LIGHT,
+                                    label = "Light",
+                                    icon = Icons.Outlined.LightMode,
+                                    onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) }
+                                )
+                                ThemeChip(
+                                    selected = settings.themeMode == ThemeMode.DARK,
+                                    label = "Dark",
+                                    icon = Icons.Outlined.DarkMode,
+                                    onClick = { viewModel.setThemeMode(ThemeMode.DARK) }
+                                )
+                            }
+                        }
                     }
-                    Text(
-                        "UI Mode",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
                     val currentUiMode = settings.uiMode
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ThemeChip(
-                            selected = currentUiMode == UiMode.LIQUID_GLASS,
-                            label = "Glassy",
-                            icon = Icons.Outlined.AutoAwesome,
-                            onClick = { viewModel.setUiMode(UiMode.LIQUID_GLASS) }
-                        )
-                        ThemeChip(
-                            selected = currentUiMode == UiMode.MATERIAL,
-                            label = "Material",
-                            icon = Icons.Outlined.Android,
-                            onClick = { viewModel.setUiMode(UiMode.MATERIAL) }
-                        )
+                    SettingsItemSurface(position = SettingsItemPosition.MIDDLE) {
+                        Column {
+                            Text(
+                                "UI Mode",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(top = 8.dp)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp).padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ThemeChip(
+                                    selected = currentUiMode == UiMode.LIQUID_GLASS,
+                                    label = "Glassy",
+                                    icon = Icons.Outlined.AutoAwesome,
+                                    onClick = { viewModel.setUiMode(UiMode.LIQUID_GLASS) }
+                                )
+                                ThemeChip(
+                                    selected = currentUiMode == UiMode.MATERIAL,
+                                    label = "Material",
+                                    icon = Icons.Outlined.Android,
+                                    onClick = { viewModel.setUiMode(UiMode.MATERIAL) }
+                                )
+                            }
+                        }
                     }
 
                     if (currentUiMode == UiMode.LIQUID_GLASS) {
-                        Text(
-                            "Background Style",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        val animations = BackgroundAnimationType.entries.toTypedArray()
-                        androidx.compose.foundation.lazy.LazyRow(
+                        SettingsItemSurface(position = SettingsItemPosition.MIDDLE) {
+                            Column {
+                                Text(
+                                    "Background Style",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(top = 8.dp)
+                                )
+                                val animations = BackgroundAnimationType.entries.toTypedArray()
+                                androidx.compose.foundation.lazy.LazyRow(
                             contentPadding = PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -346,19 +359,24 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                            }
+                        }
                     }
                     SettingsSwitch(
                         title = "Dynamic Color",
                         subtitle = "Match system colors (Android 12+)",
                         icon = Icons.Outlined.ColorLens,
                         checked = settings.useDynamicColor,
+                        position = if (settings.useDynamicColor) SettingsItemPosition.LAST else SettingsItemPosition.MIDDLE,
                         onCheckedChange = { viewModel.setUseDynamicColor(it) }
                     )
                     if (!settings.useDynamicColor) {
-                        SettingsColorPicker(
-                            selectedColor = settings.accentColor,
-                            onColorSelected = { viewModel.setAccentColor(it) }
-                        )
+                        SettingsItemSurface(position = SettingsItemPosition.LAST) {
+                            SettingsColorPicker(
+                                selectedColor = settings.accentColor,
+                                onColorSelected = { viewModel.setAccentColor(it) }
+                            )
+                        }
                     }
                 }
             }
@@ -369,6 +387,7 @@ fun SettingsScreen(
                         subtitle = "Use masonry style grid",
                         icon = Icons.Outlined.DashboardCustomize,  
                         checked = settings.galleryViewType == GalleryViewType.STAGGERED,
+                        position = SettingsItemPosition.FIRST,
                         onCheckedChange = {
                             viewModel.setGalleryViewType(if (it) GalleryViewType.STAGGERED else GalleryViewType.GRID)
                         }
@@ -380,6 +399,7 @@ fun SettingsScreen(
                         range = 2f..5f,
                         steps = 2,
                         icon = Icons.Outlined.GridOn,
+                        position = SettingsItemPosition.MIDDLE,
                         onValueChange = { viewModel.setGalleryGridCount(it.roundToInt()) }
                     )
 
@@ -389,6 +409,7 @@ fun SettingsScreen(
                         range = 0f..32f,
                         steps = 0,  
                         icon = Icons.Outlined.RoundedCorner,
+                        position = SettingsItemPosition.LAST,
                         onValueChange = { viewModel.setGalleryCornerRadius(it.roundToInt()) }
                     )
                 }
@@ -401,6 +422,7 @@ fun SettingsScreen(
                         range = 2f..4f,
                         steps = 1,
                         icon = Icons.Outlined.GridOn,
+                        position = SettingsItemPosition.FIRST,
                         onValueChange = { viewModel.setAlbumGridCount(it.roundToInt()) }
                     )
                     SettingsSlider(
@@ -409,6 +431,7 @@ fun SettingsScreen(
                         range = 0f..32f,
                         steps = 0,
                         icon = Icons.Outlined.RoundedCorner,
+                        position = SettingsItemPosition.MIDDLE,
                         onValueChange = { viewModel.setAlbumCornerRadius(it.roundToInt()) }
                     )
                     SettingsSwitch(
@@ -416,6 +439,7 @@ fun SettingsScreen(
                         subtitle = "Display count on album cards",
                         icon = Icons.Outlined.Numbers,
                         checked = settings.showMediaCount,
+                        position = SettingsItemPosition.LAST,
                         onCheckedChange = { viewModel.setShowMediaCount(it) }
                     )
                 }
@@ -427,6 +451,7 @@ fun SettingsScreen(
                         subtitle = "Use masonry style grid inside albums",
                         icon = Icons.Outlined.DashboardCustomize,
                         checked = settings.albumDetailViewType == GalleryViewType.STAGGERED,
+                        position = SettingsItemPosition.FIRST,
                         onCheckedChange = {
                             viewModel.setAlbumDetailViewType(if (it) GalleryViewType.STAGGERED else GalleryViewType.GRID)
                         }
@@ -437,6 +462,7 @@ fun SettingsScreen(
                         range = 2f..5f,
                         steps = 2,
                         icon = Icons.Outlined.GridOn,
+                        position = SettingsItemPosition.MIDDLE,
                         onValueChange = { viewModel.setAlbumDetailGridCount(it.roundToInt()) }
                     )
                      SettingsSlider(
@@ -445,6 +471,7 @@ fun SettingsScreen(
                         range = 0f..32f,
                         steps = 0,
                         icon = Icons.Outlined.RoundedCorner,
+                        position = SettingsItemPosition.LAST,
                         onValueChange = { viewModel.setAlbumDetailCornerRadius(it.roundToInt()) }
                     )
                  }
@@ -456,7 +483,16 @@ fun SettingsScreen(
                         subtitle = "Force max brightness in viewer",
                         icon = Icons.Outlined.BrightnessHigh,
                         checked = settings.maxBrightness,
+                        position = SettingsItemPosition.FIRST,
                         onCheckedChange = { viewModel.setMaxBrightness(it) }
+                    )
+                    SettingsSwitch(
+                        title = "Vertical Swipe",
+                        subtitle = "Swipe up/down instead of left/right for Media files",
+                        icon = Icons.Outlined.SwipeVertical,
+                        checked = settings.verticalSwipe,
+                        position = SettingsItemPosition.LAST,
+                        onCheckedChange = { viewModel.setVerticalSwipe(it) }
                     )
                 }
             }
@@ -467,12 +503,14 @@ fun SettingsScreen(
                         subtitle = "Move items to bin before permanent deletion",
                         icon = Icons.Default.Restore,  
                         checked = settings.trashEnabled,
+                        position = SettingsItemPosition.FIRST,
                         onCheckedChange = { viewModel.setTrashEnabled(it) }
                     )
                     SettingsItem(
                         title = "Open Recycle Bin",
                         subtitle = "Manage deleted items",
                         icon = Icons.Outlined.Delete,
+                        position = SettingsItemPosition.LAST,
                         onClick = { navController.navigate(Screen.RecycleBin.route) }
                     )
                 }
@@ -506,16 +544,8 @@ fun SettingsGroup(
                 fontWeight = FontWeight.Bold
             )
         }
-        GlassSurface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp, 
-            border = false  
-        ) {
-            Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                content()
-            }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            content()
         }
     }
 }
@@ -525,24 +555,27 @@ fun SettingsSwitch(
     subtitle: String? = null,
     icon: ImageVector,
     checked: Boolean,
+    position: SettingsItemPosition = SettingsItemPosition.SINGLE,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            if (subtitle != null) {
-                Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+    SettingsItemSurface(position = position) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onCheckedChange(!checked) }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                if (subtitle != null) {
+                    Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+                }
             }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 @Composable
@@ -552,27 +585,30 @@ fun SettingsSlider(
     range: ClosedFloatingPointRange<Float>,
     steps: Int,
     icon: ImageVector,
+    position: SettingsItemPosition = SettingsItemPosition.SINGLE,
     onValueChange: (Float) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.weight(1f))
-            Text(text = value.toInt().toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    SettingsItemSurface(position = position) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.weight(1f))
+                Text(text = value.toInt().toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            }
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = range,
+                steps = steps,
+                modifier = Modifier.padding(start = 40.dp)
+            )
         }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = range,
-            steps = steps,
-            modifier = Modifier.padding(start = 40.dp)
-        )
     }
 }
 @Composable
@@ -580,24 +616,27 @@ fun SettingsItem(
     title: String,
     subtitle: String? = null,
     icon: ImageVector,
+    position: SettingsItemPosition = SettingsItemPosition.SINGLE,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            if (subtitle != null) {
-                Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+    SettingsItemSurface(position = position) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                if (subtitle != null) {
+                    Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+                }
             }
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
     }
 }
 @Composable
@@ -670,5 +709,37 @@ fun SettingsColorPicker(
                 }
             }
         }
+    }
+}
+
+enum class SettingsItemPosition {
+    FIRST, MIDDLE, LAST, SINGLE
+}
+
+@Composable
+fun getSettingsShape(position: SettingsItemPosition): androidx.compose.ui.graphics.Shape {
+    val large = 28.dp
+    val small = 4.dp
+    return when (position) {
+        SettingsItemPosition.FIRST -> RoundedCornerShape(topStart = large, topEnd = large, bottomStart = small, bottomEnd = small)
+        SettingsItemPosition.MIDDLE -> RoundedCornerShape(small)
+        SettingsItemPosition.LAST -> RoundedCornerShape(topStart = small, topEnd = small, bottomStart = large, bottomEnd = large)
+        SettingsItemPosition.SINGLE -> RoundedCornerShape(large)
+    }
+}
+
+@Composable
+fun SettingsItemSurface(
+    position: SettingsItemPosition,
+    content: @Composable () -> Unit
+) {
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = getSettingsShape(position),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 6.dp,
+        border = false
+    ) {
+        content()
     }
 }

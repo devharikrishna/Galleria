@@ -31,5 +31,6 @@ data class AppSettings(
     val maxBrightness: Boolean = false,
     val videoAutoplay: Boolean = false,
     val trashEnabled: Boolean = true,
-    val blobAnimation: BackgroundAnimationType = BackgroundAnimationType.WAVE
+    val blobAnimation: BackgroundAnimationType = BackgroundAnimationType.WAVE,
+    val verticalSwipe: Boolean = true
 )

@@ -255,6 +255,13 @@ object BitmapUtils {
     private fun applyColorMatrixStart(source: Bitmap, adj: Adjustments): Bitmap {
         val cm = ColorMatrix()
         
+        // Apply Selected Filter
+        if (adj.filter != FilterType.NONE) {
+            val baseFilterCm = FilterUtils.createFilterMatrix(adj.filter)
+            val scaledFilterCm = FilterUtils.scaleFilterMatrix(baseFilterCm, adj.filterStrength)
+            cm.postConcat(scaledFilterCm)
+        }
+        
         // Brightness, Contrast, Saturation (Global)
         if (adj.contrast != 1f) {
             val scale = adj.contrast
@@ -643,14 +650,15 @@ object BitmapUtils {
     private suspend fun applyConvolution(source: Bitmap, adj: Adjustments): Bitmap = withContext(Dispatchers.Default) {
         val width = source.width
         val height = source.height
+        
+        val amount = adj.sharpen
+        if (amount <= 0f) return@withContext source
+
         val output = createBitmap(width, height)
         val pixels = IntArray(width * height)
         source.getPixels(pixels, 0, width, 0, 0, width, height)
+        // Optimization: Use same array for mutable operations if possible, or allocate once
         val newPixels = IntArray(width * height)
-        
-        val amount = adj.sharpen
-        // If amount is small, skip
-        if (amount <= 0f) return@withContext source
 
         val kernelCenter = 4f * amount + 1f
         val kernelNeighbor = -amount
@@ -701,6 +709,7 @@ object BitmapUtils {
         
         val width = source.width
         val height = source.height
+        
         val output = createBitmap(width, height)
         val pixels = IntArray(width * height)
         source.getPixels(pixels, 0, width, 0, 0, width, height)

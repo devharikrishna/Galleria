@@ -25,7 +25,8 @@ fun ZoomableImage(
     painter: AsyncImagePainter,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    onTap: () -> Unit = {}
+    onTap: () -> Unit = {},
+    onZoomChange: (Boolean) -> Unit = {}
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -41,8 +42,10 @@ fun ZoomableImage(
                         if (scale > 1f) {
                             scale = 1f
                             offset = Offset.Zero
+                            onZoomChange(false)
                         } else {
                             scale = 2.5f
+                            onZoomChange(true)
                         }
                     },
                     onTap = { onTap() }
@@ -82,7 +85,13 @@ fun ZoomableImage(
                                         it.consume()
                                     }
                                 }
+                                val previousScale = scale
                                 scale = (scale * zoomChange).coerceIn(1f, 5f)
+                                if (previousScale == 1f && scale > 1f) {
+                                    onZoomChange(true)
+                                } else if (previousScale > 1f && scale == 1f) {
+                                    onZoomChange(false)
+                                }
                                 val extraWidth = (scale - 1) * screenWidth
                                 val extraHeight = (scale - 1) * screenHeight
                                 val maxX = extraWidth / 2

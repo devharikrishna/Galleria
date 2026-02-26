@@ -4,6 +4,7 @@ import android.graphics.ColorMatrix
 
 enum class FilterType(val label: String) {
     NONE("Original"),
+    VIVID("Vivid"),
     BW("B&W"),
     SEPIA("Sepia"),
     VINTAGE("Vintage"),
@@ -22,6 +23,21 @@ object FilterUtils {
         val cm = ColorMatrix()
         when (type) {
             FilterType.NONE -> { /* Identity */ }
+            FilterType.VIVID -> {
+                // Boost general saturation moderately 
+                cm.setSaturation(1.2f)
+                
+                // Adjust channels:
+                // Red (Skin): Reduce contrast slightly to counter saturation, add brightness to make skin 'fair'
+                // Green/Blue (Environment): Increase contrast to deepen skies and foliage for a vivid look
+                val vividMatrix = ColorMatrix(floatArrayOf(
+                    0.95f, 0.05f, 0.0f, 0.0f, 10f,  // Red: slight mix, +10 brightness for fair skin tones
+                    0.0f, 1.15f, 0.0f, 0.0f, -10f,  // Green: +contrast for punchy nature
+                    0.0f, 0.0f, 1.15f, 0.0f, -10f,  // Blue: +contrast for punchy skies
+                    0.0f, 0.0f, 0.0f, 1.0f, 0.0f
+                ))
+                cm.postConcat(vividMatrix)
+            }
             FilterType.BW -> cm.setSaturation(0f)
             FilterType.SEPIA -> {
                 cm.setScale(1f, 0.95f, 0.82f, 1f) // Base warm

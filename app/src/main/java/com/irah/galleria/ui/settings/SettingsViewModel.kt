@@ -73,4 +73,7 @@ class SettingsViewModel @Inject constructor(
     fun setBlobAnimation(type: com.irah.galleria.domain.model.BackgroundAnimationType) {
         viewModelScope.launch { settingsRepository.setBlobAnimation(type) }
     }
+    fun setVerticalSwipe(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setVerticalSwipe(enabled) }
+    }
 }
