@@ -90,7 +90,7 @@ fun MediaGridItem(
             .precision(coil.size.Precision.EXACT)
             .allowHardware(true)
             .allowRgb565(true)
-            .crossfade(true) 
+            .crossfade(false)
             .dispatcher(kotlinx.coroutines.Dispatchers.IO)
             .build()
     }

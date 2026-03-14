@@ -49,6 +49,19 @@ class BaselineProfileGenerator {
                      device.waitForIdle()
                      // Wait for media viewer
                      Thread.sleep(1000)
+                     
+                     // Try to open Editor (content desc "Edit")
+                     val editButton = device.findObject(androidx.test.uiautomator.By.descContains("Edit"))
+                     editButton?.click()
+                     device.waitForIdle()
+                     Thread.sleep(1000) // Wait for Editor to load
+                     
+                     // Go back from Editor
+                     device.pressBack()
+                     device.waitForIdle()
+                     Thread.sleep(500)
+                     
+                     // Go back from ImageViewer
                      device.pressBack()
                      device.waitForIdle()
                  }

@@ -145,7 +145,7 @@ fun GalleryScreen(
     val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
     com.irah.galleria.ui.theme.GlassScaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackBarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             val topBarColors = if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
                 TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
@@ -373,8 +373,16 @@ fun GalleryScreen(
                     }
                 }
 
+                val onMemoryClick = remember(state.memories, navController) {
+                    { index: Int ->
+                        val ids = state.memories.joinToString(",") { it.id.toString() }
+                        navController.navigate("story_viewer/$ids/$index")
+                    }
+                }
+
                 com.irah.galleria.ui.gallery.components.GalleryGridContent(
                     media = state.media,
+                    memories = state.memories,
                     selectedIds = state.selectedMediaIds,
                     isSelectionMode = state.isSelectionMode,
                     settings = settings,
@@ -382,6 +390,7 @@ fun GalleryScreen(
                     gridState = gridState,
                     staggeredGridState = staggeredGridState,
                     onMediaClick = onMediaClick,
+                    onMemoryClick = onMemoryClick,
                     onSelectionChange = onSelectionChange,
                     onToggleSelection = onToggleSelection,
                     imageLoader = context.imageLoader,

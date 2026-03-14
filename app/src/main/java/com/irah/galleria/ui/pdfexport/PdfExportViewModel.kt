@@ -63,6 +63,12 @@ class PdfExportViewModel @Inject constructor(
         }
     }
 
+    fun removeItem(mediaId: Long) {
+        val currentList = _state.value.mediaList.toMutableList()
+        currentList.removeAll { it.id == mediaId }
+        _state.value = _state.value.copy(mediaList = currentList)
+    }
+
     fun exportPdf(context: Context) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isExporting = true, error = null)

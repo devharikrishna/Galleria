@@ -43,7 +43,10 @@ data class EditorState(
     val activeAutoVariant: AutoEnhanceVariant? = null,
     
     // Curves
-    val activeCurveChannel: CurveChannel = CurveChannel.RGB
+    val activeCurveChannel: CurveChannel = CurveChannel.RGB,
+    
+    // Hardware Acceleration
+    val useHardwareAcceleration: Boolean = false
 )
 
 enum class EditorTool {
@@ -127,16 +130,50 @@ class EditorViewModel @Inject constructor(
                 adjustments
             }
 
-            // Reduce preview size for live updates to improve performance
-            // 720p is sufficient for phone screens and much faster to process on CPU
-            val newPreview = BitmapUtils.applyAdjustments(
-                original = original, 
-                adjustments = effectiveAdjustments, 
-                previewWidth = 720, 
-                previewHeight = 1280,
-                segmentationMask = segmentationMask
-            )
-            _state.update { it.copy(previewBitmap = newPreview) }
+            // Check if we can use AGSL
+            val canUseHardware = AgslShader.canUseHardwareAcceleration(effectiveAdjustments)
+
+            if (canUseHardware) {
+                // For hardware rendering, we ONLY want CPU to handle geometry (Crop/Rotate)
+                // The GPU shader will handle all color/light math at 60fps
+                val geometryOnlyAdjustments = BitmapUtils.Adjustments(
+                    rotationDegrees = effectiveAdjustments.rotationDegrees,
+                    straightenDegrees = effectiveAdjustments.straightenDegrees,
+                    flipHorizontal = effectiveAdjustments.flipHorizontal,
+                    flipVertical = effectiveAdjustments.flipVertical,
+                    cropRect = effectiveAdjustments.cropRect
+                )
+                
+                val newPreview = BitmapUtils.applyAdjustments(
+                    original = original, 
+                    adjustments = geometryOnlyAdjustments, 
+                    previewWidth = 720, 
+                    previewHeight = 1280,
+                    segmentationMask = null
+                )
+                
+                _state.update { 
+                    it.copy(
+                        previewBitmap = newPreview,
+                        useHardwareAcceleration = true
+                    ) 
+                }
+            } else {
+                // Fallback to full CPU processing
+                val newPreview = BitmapUtils.applyAdjustments(
+                    original = original, 
+                    adjustments = effectiveAdjustments, 
+                    previewWidth = 720, 
+                    previewHeight = 1280,
+                    segmentationMask = segmentationMask
+                )
+                _state.update { 
+                    it.copy(
+                        previewBitmap = newPreview,
+                        useHardwareAcceleration = false
+                    ) 
+                }
+            }
         }
     }
 
@@ -299,7 +336,7 @@ class EditorViewModel @Inject constructor(
             // Get original media info for folder path
             val originalMedia = repository.getMediaById(mediaId)
             
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Default) {
                 try {
                     // 1. Process Bitmap (0% -> 80%)
                     val finalBitmap = BitmapUtils.applyAdjustments(

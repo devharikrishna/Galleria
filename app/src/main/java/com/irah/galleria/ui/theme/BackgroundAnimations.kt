@@ -1,9 +1,13 @@
 package com.irah.galleria.ui.theme
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.EaseOutSine
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,7 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.util.lerp
+import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -306,3 +310,160 @@ fun AnimatedMesh(isDark: Boolean) {
         }
     }
 }
+
+@Composable
+fun AnimatedAurora(isDark: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "aurora_spiral")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(40000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "rotation"
+    )
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.8f, targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(8000, easing = EaseOutSine),
+            repeatMode = RepeatMode.Reverse
+        ), label = "pulse"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val w = size.width
+        val h = size.height
+        val center = Offset(w * 0.5f, h * 0.4f)
+        val baseColor = if (isDark) Color(0xFF020617) else Color(0xFFF8FAFC)
+        drawRect(color = baseColor)
+
+        val colors = if (isDark) {
+            listOf(
+                Color(0xFF2DD4BF).copy(alpha = 0.06f),
+                Color(0xFF818CF8).copy(alpha = 0.05f),
+                Color(0xFF22D3EE).copy(alpha = 0.04f)
+            )
+        } else {
+            listOf(
+                Color(0xFF99F6E4).copy(alpha = 0.15f),
+                Color(0xFFC7D2FE).copy(alpha = 0.12f),
+                Color(0xFFA5F3FC).copy(alpha = 0.10f)
+            )
+        }
+
+        colors.forEachIndexed { i, color ->
+            val path = Path()
+            val startAngle = rotation + (i * 120f)
+            
+            for (angle in 0..720 step 5) {
+                val rad = Math.toRadians((angle + startAngle).toDouble()).toFloat()
+                // Spiral formula: r = a + b * theta
+                // We add some wave distortion to the radius
+                val radius = (angle * 0.5f + 50 * sin(rad * 2 + rotation * 0.05f)) * pulse
+                val x = center.x + radius * cos(rad)
+                val y = center.y + radius * sin(rad)
+                
+                if (angle == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(
+                    width = w * (0.15f + i * 0.05f),
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedSpeed(isDark: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "speed")
+    val progress by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "progress"
+    )
+
+    val lines = remember {
+        List(15) {
+            val y = Random.nextFloat()
+            val length = Random.nextFloat() * 200f + 100f
+            val speed = Random.nextFloat() * 0.5f + 0.5f
+            Triple(y, length, speed)
+        }
+    }
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val w = size.width
+        val h = size.height
+        val baseColor = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)
+        drawRect(color = baseColor)
+
+        val lineColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f)
+
+        lines.forEach { (yFactor, length, speedFactor) ->
+            val x = ((progress * speedFactor * w * 2) % (w + length)) - length
+            val y = yFactor * h
+            
+            drawLine(
+                color = lineColor,
+                start = Offset(x, y),
+                end = Offset(x + length, y),
+                strokeWidth = 2.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedConstellation(isDark: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "constellation")
+    val t by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 2 * Math.PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(30000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "t"
+    )
+
+    val points = remember { List(20) { Offset(Random.nextFloat(), Random.nextFloat()) } }
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val w = size.width
+        val h = size.height
+        val baseColor = if (isDark) Color(0xFF020617) else Color(0xFFF8FAFC)
+        drawRect(color = baseColor)
+
+        val accentColor = if (isDark) Color(0xFF94A3B8).copy(alpha = 0.2f) else Color(0xFF64748B).copy(alpha = 0.2f)
+        val pointColor = if (isDark) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.3f)
+
+        val movedPoints = points.mapIndexed { i, p ->
+            Offset(
+                (p.x * w + 30 * sin(t + i)).coerceIn(0f, w),
+                (p.y * h + 30 * cos(t + i * 0.7f)).coerceIn(0f, h)
+            )
+        }
+
+        // Draw connections
+        for (i in movedPoints.indices) {
+            for (j in i + 1 until movedPoints.size) {
+                val d = (movedPoints[i] - movedPoints[j]).getDistance()
+                if (d < w * 0.3f) {
+                    val alpha = (1f - d / (w * 0.3f)) * 0.2f
+                    drawLine(accentColor.copy(alpha = alpha), movedPoints[i], movedPoints[j], strokeWidth = 1.dp.toPx())
+                }
+            }
+        }
+
+        // Draw points
+        movedPoints.forEach { p ->
+            drawCircle(pointColor, radius = 2.dp.toPx(), center = p)
+        }
+    }
+}
+

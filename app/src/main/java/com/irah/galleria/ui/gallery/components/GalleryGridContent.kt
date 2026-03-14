@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,6 +29,7 @@ import com.irah.galleria.domain.model.Media
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import com.irah.galleria.ui.album.components.MemoriesCarousel
 
 @Composable
 fun GalleryGridContent(
@@ -39,10 +41,12 @@ fun GalleryGridContent(
     gridState: LazyGridState,
     staggeredGridState: LazyStaggeredGridState,
     onMediaClick: (Media) -> Unit,
+    onMemoryClick: (Int) -> Unit,
     onSelectionChange: (Set<Long>) -> Unit,
     onToggleSelection: (Long) -> Unit,
     imageLoader: ImageLoader,
-    itemSizePx: Int
+    itemSizePx: Int,
+    memories: com.irah.galleria.ui.util.ImmutableList<Media> = com.irah.galleria.ui.util.ImmutableList(emptyList())
 ) {
     val context = LocalContext.current
     if (settings.galleryViewType == GalleryViewType.GRID) {
@@ -50,10 +54,14 @@ fun GalleryGridContent(
         // Smart Pre-loading for Grid
         val preloadedIds = remember { mutableSetOf<Long>() }
         
-        LaunchedEffect(media, itemSizePx) {
+        val lastVisibleIndexFlow = remember(gridState) {
             snapshotFlow {
                 gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             }
+        }
+
+        LaunchedEffect(media, itemSizePx) {
+            lastVisibleIndexFlow
             .map { it / settings.galleryGridCount } // Map to row index to reduce updates
             .distinctUntilChanged()
             .collectLatest { _ ->
@@ -109,6 +117,17 @@ fun GalleryGridContent(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
+                    if (memories.isNotEmpty() && !isSelectionMode) {
+                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(settings.galleryGridCount) }) {
+                            MemoriesCarousel(
+                                memories = memories.items,
+                                onMemoryClick = onMemoryClick,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp)
+                            )
+                        }
+                    }
                     items(
                         items = media.items,
                         key = { it.id },
@@ -138,10 +157,14 @@ fun GalleryGridContent(
         // Staggered Grid
          val preloadedIds = remember { mutableSetOf<Long>() }
 
-        LaunchedEffect(media, itemSizePx) {
+        val lastVisibleStaggeredIndexFlow = remember(staggeredGridState) {
             snapshotFlow {
                 staggeredGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             }
+        }
+
+        LaunchedEffect(media, itemSizePx) {
+            lastVisibleStaggeredIndexFlow
             .map { it / settings.galleryGridCount } 
             .distinctUntilChanged()
             .collectLatest { _ ->
@@ -197,6 +220,17 @@ fun GalleryGridContent(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalItemSpacing = 2.dp
                 ) {
+                    if (memories.isNotEmpty() && !isSelectionMode) {
+                        item(span = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan.FullLine) {
+                            MemoriesCarousel(
+                                memories = memories.items,
+                                onMemoryClick = onMemoryClick,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp)
+                            )
+                        }
+                    }
                     items(
                         items = media.items,
                         key = { it.id },

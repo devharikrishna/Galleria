@@ -135,22 +135,7 @@ fun AlbumScreen(
                         }
                     }
 
-                    // Memories Section (Stories)
-                    if (state.memories.isNotEmpty()) {
-                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(settings.albumGridCount) }) {
-                            com.irah.galleria.ui.album.components.MemoriesCarousel(
-                                memories = state.memories,
-                                onMemoryClick = { index ->
-                                    // Pass IDs string just in case, but Viewer currently uses VM state directly
-                                    val ids = state.memories.joinToString(",") { it.id.toString() }
-                                    navController.navigate("story_viewer/$ids/$index")
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                            )
-                        }
-                    }
+
 
 
 

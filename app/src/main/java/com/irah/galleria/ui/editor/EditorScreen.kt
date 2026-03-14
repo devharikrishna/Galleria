@@ -73,6 +73,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import android.os.Build
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -173,9 +174,22 @@ fun EditorScreen(
             } 
             
             if (!state.isLoading) {
-                val bitmapToShow = if (isComparing) state.originalBitmap else state.previewBitmap
+                val rawBitmapToShow = if (isComparing) state.originalBitmap else state.previewBitmap
                 
-                if (bitmapToShow != null) {
+                if (rawBitmapToShow != null) {
+                    val bitmapToShow = remember(rawBitmapToShow) {
+                        val maxBytes = 80_000_000L // 80MB safe limit for Canvas
+                        val byteCount = rawBitmapToShow.width.toLong() * rawBitmapToShow.height.toLong() * 4L
+                        if (byteCount > maxBytes) {
+                            val scale = kotlin.math.sqrt(maxBytes.toDouble() / byteCount.toDouble()).toFloat()
+                            val targetWidth = (rawBitmapToShow.width * scale).toInt().coerceAtLeast(1)
+                            val targetHeight = (rawBitmapToShow.height * scale).toInt().coerceAtLeast(1)
+                            android.graphics.Bitmap.createScaledBitmap(rawBitmapToShow, targetWidth, targetHeight, true)
+                        } else {
+                            rawBitmapToShow
+                        }
+                    }
+                    
                     androidx.compose.foundation.layout.BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxSize()
@@ -232,21 +246,53 @@ fun EditorScreen(
                                     val zoomDenominator = BitmapUtils.calculateAutoZoomScale(bitmapToShow.width, bitmapToShow.height, state.adjustments.straightenDegrees)
                                     val safeDenominator = if (zoomDenominator == 0f) 1f else zoomDenominator
                                     val autoZoom = zoomNum / safeDenominator
+                                    val finalScale = scale * autoZoom
                                     
-                                    rotationZ = (tempStraightenDegrees - state.adjustments.straightenDegrees)
-                                    scaleX = scale * autoZoom
-                                    scaleY = scale * autoZoom
-                                    
-                                    translationX = offset.x
-                                    translationY = offset.y
+                                    // Hardware acceleration applied on the unscaled wrapper so FBO memory doesn't explode
+                                    // The Android HardwareRenderer allocates memory for graphicsLayer RenderEffects proportional to: currentBounds * CurrentScale
+                                    // By keeping this node at Scale 1x, memory stays ~10MB instead of 300MB+ when zoomed.
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && 
+                                        state.useHardwareAcceleration && 
+                                        !isComparing) {
+                                        renderEffect = AgslShader.buildAdjustmentRenderEffect(
+                                            adjustments = state.adjustments,
+                                            viewWidth = this.size.width,
+                                            viewHeight = this.size.height,
+                                            layerScale = finalScale,
+                                            layerOffset = offset
+                                        )
+                                        clip = true 
+                                    } else {
+                                        renderEffect = null
+                                    }
                                 }
                         ) {
-                            Image(
-                                bitmap = bitmapToShow.asImageBitmap(),
-                                contentDescription = "Preview",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
+                             // Inner box applies the actual geometric transformations (zooming and panning)
+                             Box(
+                                 modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        val zoomNum = BitmapUtils.calculateAutoZoomScale(bitmapToShow.width, bitmapToShow.height, tempStraightenDegrees)
+                                        val zoomDenominator = BitmapUtils.calculateAutoZoomScale(bitmapToShow.width, bitmapToShow.height, state.adjustments.straightenDegrees)
+                                        val safeDenominator = if (zoomDenominator == 0f) 1f else zoomDenominator
+                                        val autoZoom = zoomNum / safeDenominator
+                                        val finalScale = scale * autoZoom
+                                        
+                                        rotationZ = (tempStraightenDegrees - state.adjustments.straightenDegrees)
+                                        scaleX = finalScale
+                                        scaleY = finalScale
+                                        
+                                        translationX = offset.x
+                                        translationY = offset.y
+                                    }
+                             ) {
+                                Image(
+                                    bitmap = bitmapToShow.asImageBitmap(),
+                                    contentDescription = "Preview",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Fit
+                                )
+                             }
                         }
 
                         if (state.activeTool == EditorTool.CROP) {

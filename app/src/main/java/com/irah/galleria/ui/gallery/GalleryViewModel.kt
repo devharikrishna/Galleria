@@ -27,7 +27,8 @@ data class GalleryState(
     val mediaOrder: MediaOrder = MediaOrder.Date(OrderType.Descending),
     val filterType: FilterType = FilterType.All,
     val isSelectionMode: Boolean = false,
-    val selectedMediaIds: com.irah.galleria.ui.util.ImmutableSet<Long> = com.irah.galleria.ui.util.ImmutableSet(emptySet())
+    val selectedMediaIds: com.irah.galleria.ui.util.ImmutableSet<Long> = com.irah.galleria.ui.util.ImmutableSet(emptySet()),
+    val memories: com.irah.galleria.ui.util.ImmutableList<Media> = com.irah.galleria.ui.util.ImmutableList(emptyList())
 )
 
 @HiltViewModel
@@ -36,6 +37,7 @@ class GalleryViewModel @Inject constructor(
     private val getAlbumsUseCase: com.irah.galleria.domain.usecase.GetAlbumsUseCase,
     private val mediaRepository: com.irah.galleria.domain.repository.MediaRepository,
     private val deleteMediaUseCase: com.irah.galleria.domain.usecase.DeleteMediaUseCase,
+    private val getMemoriesUseCase: com.irah.galleria.domain.usecase.GetMemoriesUseCase,
     private val notificationHelper: NotificationHelper
 ) : ViewModel() {
     private val _state = MutableStateFlow(GalleryState())
@@ -68,15 +70,19 @@ class GalleryViewModel @Inject constructor(
     }
     private fun loadMedia() {
         viewModelScope.launch {
-            getMediaUseCase(mediaOrder = _state.value.mediaOrder, filterType = _state.value.filterType)
-                .onStart { _state.value = _state.value.copy(isLoading = true) }
-                .catch { _state.value = _state.value.copy(isLoading = false) }
-                .collect { mediaList ->
-                    _state.value = _state.value.copy(
-                        media = com.irah.galleria.ui.util.ImmutableList(mediaList),
-                        isLoading = false
-                    )
-                }
+            kotlinx.coroutines.flow.combine(
+                getMediaUseCase(mediaOrder = _state.value.mediaOrder, filterType = _state.value.filterType),
+                getMemoriesUseCase.getRandomMemories(10)
+            ) { mediaList, randomMemories ->
+                _state.value = _state.value.copy(
+                    media = com.irah.galleria.ui.util.ImmutableList(mediaList),
+                    memories = com.irah.galleria.ui.util.ImmutableList(randomMemories),
+                    isLoading = false
+                )
+            }
+            .onStart { _state.value = _state.value.copy(isLoading = true) }
+            .catch { _state.value = _state.value.copy(isLoading = false) }
+            .collect {}
         }
     }
     fun onEvent(event: GalleryEvent) {

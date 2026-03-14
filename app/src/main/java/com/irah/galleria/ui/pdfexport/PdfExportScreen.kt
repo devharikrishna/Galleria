@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.Button
@@ -221,10 +222,10 @@ fun PdfExportScreen(
                                     if (isDragging) Modifier.zIndex(1f) else Modifier
                                 )
                                 .shadow(elevation, RoundedCornerShape(12.dp))
-                                .pointerInput(Unit) {
+                                .pointerInput(media.id) {
                                     detectDragGesturesAfterLongPress(
                                         onDragStart = {
-                                            draggedItemIndex = index
+                                            draggedItemIndex = state.mediaList.indexOfFirst { it.id == media.id }.takeIf { it >= 0 } ?: index
                                             dragOffset = 0f
                                         },
                                         onDragEnd = {
@@ -321,6 +322,14 @@ fun PdfExportScreen(
                                         text = "Page ${index + 1}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                IconButton(onClick = { viewModel.removeItem(media.id) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove item",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 

@@ -19,12 +19,12 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.irah.galleria.domain.model.BackgroundAnimationType
 import com.irah.galleria.domain.model.UiMode
 
 val LocalUiMode = staticCompositionLocalOf { UiMode.MATERIAL }
@@ -34,7 +34,7 @@ fun GlassScaffold(
     modifier: Modifier = Modifier,
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
-    snackbarHost: @Composable () -> Unit = {},
+    snackBarHost: @Composable () -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     floatingActionButtonPosition: FabPosition = FabPosition.End,
     containerColor: Color = MaterialTheme.colorScheme.background,
@@ -52,7 +52,7 @@ fun GlassScaffold(
                 contentColor = if (isDark) Color.White else Color(0xFF0F172A),
                 topBar = topBar,
                 bottomBar = bottomBar,
-                snackbarHost = snackbarHost,
+                snackbarHost = snackBarHost,
                 floatingActionButton = floatingActionButton,
                 floatingActionButtonPosition = floatingActionButtonPosition,
                 contentWindowInsets = contentWindowInsets,
@@ -64,7 +64,7 @@ fun GlassScaffold(
             modifier = modifier,
             topBar = topBar,
             bottomBar = bottomBar,
-            snackbarHost = snackbarHost,
+            snackbarHost = snackBarHost,
             floatingActionButton = floatingActionButton,
             floatingActionButtonPosition = floatingActionButtonPosition,
             containerColor = containerColor,
@@ -74,17 +74,20 @@ fun GlassScaffold(
         )
     }
 }
-val LocalBackgroundAnimation = staticCompositionLocalOf { com.irah.galleria.domain.model.BackgroundAnimationType.BLOB }
+val LocalBackgroundAnimation = staticCompositionLocalOf { BackgroundAnimationType.BLOB }
 
 @Composable
 fun AnimatedLiquidBackground(isDark: Boolean) {
     val animationType = LocalBackgroundAnimation.current
     when(animationType) {
-        com.irah.galleria.domain.model.BackgroundAnimationType.BLOB -> AnimatedBlob(isDark)
-        com.irah.galleria.domain.model.BackgroundAnimationType.WAVE -> AnimatedWave(isDark)
-        com.irah.galleria.domain.model.BackgroundAnimationType.GRADIENT -> AnimatedGradient(isDark)
-        com.irah.galleria.domain.model.BackgroundAnimationType.PARTICLES -> AnimatedParticles(isDark)
-        com.irah.galleria.domain.model.BackgroundAnimationType.MESH -> AnimatedMesh(isDark)
+        BackgroundAnimationType.BLOB -> AnimatedBlob(isDark)
+        BackgroundAnimationType.WAVE -> AnimatedWave(isDark)
+        BackgroundAnimationType.GRADIENT -> AnimatedGradient(isDark)
+        BackgroundAnimationType.PARTICLES -> AnimatedParticles(isDark)
+        BackgroundAnimationType.MESH -> AnimatedMesh(isDark)
+        BackgroundAnimationType.AURORA -> AnimatedAurora(isDark)
+        BackgroundAnimationType.SPEED -> AnimatedSpeed(isDark)
+        BackgroundAnimationType.CONSTELLATION -> AnimatedConstellation(isDark)
     }
 }
 @Composable

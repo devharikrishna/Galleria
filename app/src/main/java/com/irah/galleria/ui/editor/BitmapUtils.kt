@@ -1,4 +1,4 @@
-﻿package com.irah.galleria.ui.editor
+package com.irah.galleria.ui.editor
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -1241,6 +1241,81 @@ object BitmapUtils {
 
         return@withContext Pair(suggestedExposure, suggestedContrast)
     }
+    suspend fun isolateSubject(original: Bitmap, mask: Bitmap): Bitmap? = withContext(Dispatchers.Default) {
+        val width = original.width
+        val height = original.height
+        
+        // 1. Scale mask to match original if needed
+        val scaledMask = if (mask.width != width || mask.height != height) {
+            mask.scale(width, height)
+        } else {
+            mask
+        }
+
+        val output = createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        
+        // 2. Extract foreground with transparency
+        val rowPixels = IntArray(width)
+        val rowMaskPixels = IntArray(width)
+        
+        var minX = width
+        var minY = height
+        var maxX = 0
+        var maxY = 0
+        var hasForeground = false
+
+        for (y in 0 until height) {
+            original.getPixels(rowPixels, 0, width, 0, y, width, 1)
+            scaledMask.getPixels(rowMaskPixels, 0, width, 0, y, width, 1)
+            
+            for (x in 0 until width) {
+                val rawAlpha = (rowMaskPixels[x] ushr 24) and 0xFF
+                
+                // Refined alpha logic: Thresholding and smoothing
+                // 1. Semi-binary thresholding to remove low-confidence noise
+                // 2. Linear stretch between 128 and 200 for a cleaner edge
+                val alpha = when {
+                    rawAlpha < 128 -> 0
+                    rawAlpha > 200 -> 255
+                    else -> ((rawAlpha - 128) * 255 / (200 - 128)).coerceIn(0, 255)
+                }
+
+                if (alpha > 0) {
+                    val origPixel = rowPixels[x]
+                    rowPixels[x] = (alpha shl 24) or (origPixel and 0x00FFFFFF)
+                    
+                    // Track bounds for cropping
+                    if (x < minX) minX = x
+                    if (x > maxX) maxX = x
+                    if (y < minY) minY = y
+                    if (y > maxY) maxY = y
+                    hasForeground = true
+                } else {
+                    rowPixels[x] = Color.TRANSPARENT
+                }
+            }
+            output.setPixels(rowPixels, 0, width, 0, y, width, 1)
+        }
+
+        if (scaledMask != mask) scaledMask.recycle()
+        
+        if (!hasForeground) {
+            output.recycle()
+            return@withContext null
+        }
+
+        // 3. Crop to bounds for a better "sticker" look
+        val cropW = (maxX - minX + 1).coerceAtLeast(1)
+        val cropH = (maxY - minY + 1).coerceAtLeast(1)
+        
+        val croppedOutput = Bitmap.createBitmap(output, minX, minY, cropW, cropH)
+        if (croppedOutput != output) {
+            output.recycle()
+        }
+        
+        return@withContext croppedOutput
+    }
+
     fun ratioToRectRatio(aspectRatio: Float, imageRatio: Float): Float {
         return aspectRatio / imageRatio
     }

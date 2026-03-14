@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.withLock
@@ -80,7 +81,7 @@ class MediaRepositoryImpl @Inject constructor(
 
         return combine(mediaFlow, favoritesFlow) { mediaList, favs ->
              mediaList.map { it.copy(isFavorite = favs.contains(it.id.toString())) }
-        }
+        }.distinctUntilChanged()
     }
     override fun getAlbums(): Flow<List<Album>> = callbackFlow {
         val observer = object : ContentObserver(null) {
@@ -122,7 +123,7 @@ class MediaRepositoryImpl @Inject constructor(
         
         return combine(mediaFlow, favoritesFlow) { mediaList, favs ->
              mediaList.map { it.copy(isFavorite = favs.contains(it.id.toString())) }
-        }
+        }.distinctUntilChanged()
     }
     private val _operationState = MutableStateFlow<MediaOperationState>(MediaOperationState.Idle)
     override val operationState: StateFlow<MediaOperationState> = _operationState.asStateFlow()
@@ -278,12 +279,12 @@ class MediaRepositoryImpl @Inject constructor(
 
     private fun doesSearchResultExist(name: String, targetPath: String): Boolean {
         val projection = arrayOf(MediaStore.MediaColumns._ID)
-        val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+        val ion = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
         val pathArg = if (targetPath.endsWith("/")) targetPath else "$targetPath/"
-        val selectionArgs = arrayOf(name, pathArg)
+        val ionArgs = arrayOf(name, pathArg)
         val queryUri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
         try {
-            contentResolver.query(queryUri, projection, selection, selectionArgs, null)?.use { cursor ->
+            contentResolver.query(queryUri, projection, ion, ionArgs, null)?.use { cursor ->
                 return cursor.count > 0
             }
         } catch (e: Exception) {
@@ -743,7 +744,7 @@ class MediaRepositoryImpl @Inject constructor(
     override fun getFavorites(): Flow<List<Media>> {
         return getMedia().map { list ->
             list.filter { it.isFavorite }
-        }
+        }.distinctUntilChanged()
     }
 
     override fun getScreenshots(): Flow<List<Media>> {
@@ -752,6 +753,6 @@ class MediaRepositoryImpl @Inject constructor(
                 it.bucketName.contains("Screenshot", ignoreCase = true) || 
                 (it.relativePath?.contains("Screenshot", ignoreCase = true) == true)
             }
-        }
+        }.distinctUntilChanged()
     }
 }

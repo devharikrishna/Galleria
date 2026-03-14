@@ -10,7 +10,7 @@ enum class UiMode {
     MATERIAL, LIQUID_GLASS
 }
 enum class BackgroundAnimationType {
-     WAVE, BLOB, GRADIENT, PARTICLES, MESH
+     WAVE, BLOB, GRADIENT, PARTICLES, MESH, AURORA, SPEED, CONSTELLATION
 }
 @Immutable
 data class AppSettings(

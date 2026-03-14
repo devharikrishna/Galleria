@@ -9,15 +9,21 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -40,24 +46,34 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import coil.size.Size
 import com.irah.galleria.domain.model.Media
 import com.irah.galleria.ui.common.VideoPlayer
 import com.irah.galleria.ui.settings.SettingsViewModel
+import com.irah.galleria.ui.util.ClipboardUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -103,6 +119,36 @@ fun MediaViewerScreen(
         }
     }
 
+    // Always force white status bar icons — the background is always dark here.
+    // Also handle immersive mode (hiding status/navigation bars) based on showControls.
+    val view = LocalView.current
+    val window = com.irah.galleria.ui.util.findActivity(context)?.window
+    val insetsController = remember(window, view) {
+        window?.let { WindowCompat.getInsetsController(it, view) }
+    }
+
+    DisposableEffect(insetsController) {
+        val wasLightStatusBar = insetsController?.isAppearanceLightStatusBars ?: true
+        insetsController?.isAppearanceLightStatusBars = false // white icons on dark bg
+        onDispose {
+            insetsController?.isAppearanceLightStatusBars = wasLightStatusBar
+            // Ensure bars are visible when leaving the screen
+            insetsController?.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    LaunchedEffect(showControls, insetsController) {
+        if (showControls) {
+            insetsController?.show(WindowInsetsCompat.Type.systemBars())
+        } else {
+            insetsController?.hide(WindowInsetsCompat.Type.systemBars())
+            insetsController?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+
     if (!state.isLoading && state.mediaList.isNotEmpty()) {
         val pagerState = rememberPagerState(
             initialPage = state.initialIndex,
@@ -114,7 +160,45 @@ fun MediaViewerScreen(
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
+            // ── Blurred background: current image blurred full-screen ──────────
+            Crossfade(targetState = currentMedia, animationSpec = tween(700), label = "backgroundCrossfade") { media ->
+                val bgPainter = rememberAsyncImagePainter(
+                    model = ImageRequest.Builder(context)
+                        .data(media.uri)
+                        .size(400)
+                        .crossfade(true)
+                        .build()
+                )
+                Image(
+                    painter = bgPainter,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(radius = 20.dp)
+                        .graphicsLayer { alpha = 0.75f }
+                )
+            }
+            // Dark overlay for contrast
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.45f))
+            )
             var scrollingEnabled by remember { mutableStateOf(true) }
+            
+            // Animation time for the outline glow
+            var animationTime by remember { mutableFloatStateOf(0f) }
+            LaunchedEffect(state.isLiftingSubject) {
+                if (state.isLiftingSubject) {
+                    val startTime = System.currentTimeMillis()
+                    while (state.isLiftingSubject) {
+                        animationTime = (System.currentTimeMillis() - startTime) / 1000f
+                        kotlinx.coroutines.delay(16)
+                    }
+                }
+            }
+
             if (settings.verticalSwipe) {
                 VerticalPager(
                     state = pagerState,
@@ -129,9 +213,24 @@ fun MediaViewerScreen(
                             showControls = showControls,
                             onTap = { showControls = !showControls },
                             onVideoControlVisibilityChange = { showControls = it },
+                            liftMask = if (pagerState.currentPage == page) state.liftMask else null,
+                            animationTime = animationTime,
                             onZoomChange = { isZoomed -> 
                                 if (pagerState.currentPage == page) {
                                     scrollingEnabled = !isZoomed
+                                }
+                            },
+                            onLongPress = {
+                                if (!media.isVideo) {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    viewModel.liftSubject(media) { bitmap ->
+                                        if (bitmap != null) {
+                                            ClipboardUtils.copyImageToClipboard(context, bitmap)
+                                            Toast.makeText(context, "Sticker copied to clipboard", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Could not isolate subject", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
                             }
                         )
@@ -151,9 +250,24 @@ fun MediaViewerScreen(
                             showControls = showControls,
                             onTap = { showControls = !showControls },
                             onVideoControlVisibilityChange = { showControls = it },
+                            liftMask = if (pagerState.currentPage == page) state.liftMask else null,
+                            animationTime = animationTime,
                             onZoomChange = { isZoomed -> 
                                 if (pagerState.currentPage == page) {
                                     scrollingEnabled = !isZoomed
+                                }
+                            },
+                            onLongPress = {
+                                if (!media.isVideo) {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    viewModel.liftSubject(media) { bitmap ->
+                                        if (bitmap != null) {
+                                            ClipboardUtils.copyImageToClipboard(context, bitmap)
+                                            Toast.makeText(context, "Sticker copied to clipboard", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Could not isolate subject", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
                             }
                         )
@@ -248,44 +362,63 @@ fun MediaViewerScreen(
                     exit = fadeOut(),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
-                    com.irah.galleria.ui.common.MediaBottomBar(
-                        isFavorite = currentMedia.isFavorite,
-                        onFavoriteClick = { viewModel.toggleFavorite(currentMedia) },
-                        onInfoClick = { showInfoSheet = true },
-                        onEditClick = {
-                            if (currentMedia.isVideo) {
-                                try {
-                                    val editIntent = android.content.Intent(android.content.Intent.ACTION_EDIT).apply {
-                                        setDataAndType(currentMedia.uri.toUri(), currentMedia.mimeType)
-                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Bottom gradient scrim for readability
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(130.dp)
+                                .background(
+                                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f))
+                                    )
+                                )
+                                .align(Alignment.BottomCenter)
+                        )
+                        com.irah.galleria.ui.common.MediaBottomBar(
+                            isFavorite = currentMedia.isFavorite,
+                            onFavoriteClick = { viewModel.toggleFavorite(currentMedia) },
+                            onInfoClick = { showInfoSheet = true },
+                            onEditClick = {
+                                if (currentMedia.isVideo) {
+                                    try {
+                                        val editIntent = android.content.Intent(android.content.Intent.ACTION_EDIT).apply {
+                                            setDataAndType(currentMedia.uri.toUri(), currentMedia.mimeType)
+                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(editIntent)
+                                    } catch (_: Exception) {
+                                        Toast.makeText(context, "No video editor app found", Toast.LENGTH_SHORT).show()
                                     }
-                                    context.startActivity(editIntent)
-                                } catch (_: Exception) {
-                                    Toast.makeText(context, "No video editor app found", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    navController.navigate(
+                                        com.irah.galleria.ui.navigation.Screen.Editor.route + "/${currentMedia.id}"
+                                    )
                                 }
-                            } else {
-                                navController.navigate(
-                                    com.irah.galleria.ui.navigation.Screen.Editor.route + "/${currentMedia.id}"
-                                )
-                            }
-                        },
-                        onShareClick = {
-                            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                type = currentMedia.mimeType
-                                putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
-                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
-                        },
-                        onDeleteClick = {
-                            viewModel.deleteMedia(currentMedia) { intentSender ->
-                                deleteLauncher.launch(
-                                    IntentSenderRequest.Builder(intentSender).build()
-                                )
-                            }
-                        },
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    )
+                            },
+                            onShareClick = {
+                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = currentMedia.mimeType
+                                    putExtra(android.content.Intent.EXTRA_STREAM, currentMedia.uri.toUri())
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Media"))
+                            },
+                            onDeleteClick = {
+                                viewModel.deleteMedia(currentMedia) { intentSender ->
+                                    deleteLauncher.launch(
+                                        IntentSenderRequest.Builder(intentSender).build()
+                                    )
+                                }
+                            },
+                            useGradient = false,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                        )
+                    }
                 }
             }
         }
@@ -323,10 +456,18 @@ fun MediaPage(
     isSelected: Boolean,
     showControls: Boolean,
     onTap: () -> Unit,
+    onLongPress: () -> Unit = {},
     onVideoControlVisibilityChange: (Boolean) -> Unit,
+    liftMask: android.graphics.Bitmap? = null,
+    animationTime: Float = 0f,
     onZoomChange: (Boolean) -> Unit = {}
 ) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    var pageSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
         if (media.isVideo) {
             if (isSelected) {
                 VideoPlayer(
@@ -345,7 +486,10 @@ fun MediaPage(
                 com.irah.galleria.ui.common.ZoomableImage(
                     painter = painter,
                     contentDescription = media.name,
+                    liftMask = liftMask,
+                    animationTime = animationTime,
                     onTap = onTap,
+                    onLongPress = onLongPress,
                     onZoomChange = onZoomChange
                 )
                 Icon(
@@ -365,7 +509,10 @@ fun MediaPage(
             com.irah.galleria.ui.common.ZoomableImage(
                 painter = painter,
                 contentDescription = media.name,
+                liftMask = liftMask,
+                animationTime = animationTime,
                 onTap = onTap,
+                onLongPress = onLongPress,
                 onZoomChange = onZoomChange
             )
         }

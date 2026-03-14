@@ -32,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -88,7 +90,7 @@ fun MainScreen() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     CompositionLocalProvider(LocalBottomBarVisibility provides bottomBarVisibility) {
         GlassScaffold(
-            contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+            contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal),
             bottomBar = {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
@@ -96,8 +98,7 @@ fun MainScreen() {
                 
                 // Centralized System Navigation Bar Color Logic
                 val currentRoute = currentDestination?.route
-                val isBlackNavigationBar = currentRoute?.startsWith(Screen.Editor.route.substringBefore("/")) == true ||
-                                         currentRoute?.startsWith(Screen.MediaViewer.route.substringBefore("/")) == true
+                val isBlackNavigationBar = currentRoute?.startsWith(Screen.Editor.route.substringBefore("/")) == true
 
                 if (isBlackNavigationBar) {
                     com.irah.galleria.ui.util.ForceSystemNavigationColor(androidx.compose.ui.graphics.Color.Black)
@@ -114,13 +115,27 @@ fun MainScreen() {
                     val uiMode = com.irah.galleria.ui.theme.LocalUiMode.current
                     if (uiMode == com.irah.galleria.domain.model.UiMode.LIQUID_GLASS) {
                         com.irah.galleria.ui.theme.GlassNavigationBar {
-                             items.forEach { screen ->
+                            items.forEach { screen ->
                                 val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                                
+                                val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+                                    targetValue = if (selected) 1.2f else 1.0f,
+                                    animationSpec = androidx.compose.animation.core.spring(
+                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                        stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                                    ),
+                                    label = "iconScale"
+                                )
+
                                 NavigationBarItem(
                                     icon = {
                                         Icon(
                                             imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                            contentDescription = screen.title
+                                            contentDescription = screen.title,
+                                            modifier = Modifier.graphicsLayer {
+                                                scaleX = animatedScale
+                                                scaleY = animatedScale
+                                            }
                                         )
                                     },
                                     label = { Text(screen.title) },
@@ -148,11 +163,25 @@ fun MainScreen() {
                         NavigationBar {
                             items.forEach { screen ->
                                 val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                                
+                                val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+                                    targetValue = if (selected) 1.2f else 1.0f,
+                                    animationSpec = androidx.compose.animation.core.spring(
+                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                        stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                                    ),
+                                    label = "iconScale"
+                                )
+
                                 NavigationBarItem(
                                     icon = {
                                         Icon(
                                             imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                            contentDescription = screen.title
+                                            contentDescription = screen.title,
+                                            modifier = Modifier.graphicsLayer {
+                                                scaleX = animatedScale
+                                                scaleY = animatedScale
+                                            }
                                         )
                                     },
                                     label = { Text(screen.title) },
