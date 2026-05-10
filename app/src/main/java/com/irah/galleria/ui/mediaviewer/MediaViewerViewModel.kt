@@ -9,7 +9,6 @@ import com.irah.galleria.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import com.irah.galleria.ui.editor.BitmapUtils
 import com.irah.galleria.ui.editor.SegmentationHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,8 +24,12 @@ data class MediaViewerState(
     val initialIndex: Int = 0,
     val isLoading: Boolean = true,
     val isLiftingSubject: Boolean = false,
-    val liftMask: Bitmap? = null
+    val liftMask: Bitmap? = null,
+    /** Non-null when the sticker refine overlay should be shown. */
+    val stickerSourceBitmap: Bitmap? = null,
+    val stickerMaskBitmap: Bitmap? = null
 )
+
 @HiltViewModel
 class MediaViewerViewModel @Inject constructor(
     private val getMediaUseCase: GetMediaUseCase,
@@ -45,98 +48,111 @@ class MediaViewerViewModel @Inject constructor(
     private val orderDesc: Boolean = savedStateHandle[Screen.MediaViewer.ORDER_DESC_ARG] ?: true
     private val filterTypeStr: String = savedStateHandle[Screen.MediaViewer.FILTER_TYPE_ARG] ?: "All"
 
-    init {
-        loadMedia()
-    }
+    init { loadMedia() }
+
     private fun loadMedia() {
         viewModelScope.launch {
-            val orderType = if (orderDesc) com.irah.galleria.domain.util.OrderType.Descending else com.irah.galleria.domain.util.OrderType.Ascending
-            val mediaOrder = when(sortType) {
+            val orderType = if (orderDesc) com.irah.galleria.domain.util.OrderType.Descending
+                            else com.irah.galleria.domain.util.OrderType.Ascending
+            val mediaOrder = when (sortType) {
                 "Date" -> com.irah.galleria.domain.util.MediaOrder.Date(orderType)
                 "Name" -> com.irah.galleria.domain.util.MediaOrder.Name(orderType)
                 "Size" -> com.irah.galleria.domain.util.MediaOrder.Size(orderType)
-                else -> com.irah.galleria.domain.util.MediaOrder.Date(orderType)
+                else   -> com.irah.galleria.domain.util.MediaOrder.Date(orderType)
             }
-            val filterType = when(filterTypeStr) {
-                 "Images" -> com.irah.galleria.domain.usecase.FilterType.Images
-                 "Videos" -> com.irah.galleria.domain.usecase.FilterType.Videos
-                 else -> com.irah.galleria.domain.usecase.FilterType.All
+            val filterType = when (filterTypeStr) {
+                "Images" -> com.irah.galleria.domain.usecase.FilterType.Images
+                "Videos" -> com.irah.galleria.domain.usecase.FilterType.Videos
+                else     -> com.irah.galleria.domain.usecase.FilterType.All
             }
-
-            getMediaUseCase(
-                albumId = albumId,
-                mediaOrder = mediaOrder,
-                filterType = filterType
-            ).collect { mediaList ->
-                val index = mediaList.indexOfFirst { it.id == mediaId }
-                _state.value = MediaViewerState(
-                    mediaList = mediaList,
-                    initialIndex = if (index != -1) index else 0,
-                    isLoading = false
-                )
-            }
+            getMediaUseCase(albumId = albumId, mediaOrder = mediaOrder, filterType = filterType)
+                .collect { mediaList ->
+                    val index = mediaList.indexOfFirst { it.id == mediaId }
+                    _state.value = MediaViewerState(
+                        mediaList = mediaList,
+                        initialIndex = if (index != -1) index else 0,
+                        isLoading = false
+                    )
+                }
         }
     }
+
     fun deleteMedia(media: Media, intentSenderLauncher: (android.content.IntentSender) -> Unit) {
-         viewModelScope.launch {
-             val intentSender = deleteMediaUseCase(listOf(media))
-             if (intentSender != null) {
-                 intentSenderLauncher(intentSender)
-             } else {
-             }
-         }
-    }
-    fun toggleFavorite(media: Media) {
         viewModelScope.launch {
-            repository.toggleFavorite(media.id.toString())
+            val intentSender = deleteMediaUseCase(listOf(media))
+            if (intentSender != null) intentSenderLauncher(intentSender)
         }
     }
 
-    fun liftSubject(media: Media, onResult: (Bitmap?) -> Unit) {
+    fun toggleFavorite(media: Media) {
+        viewModelScope.launch { repository.toggleFavorite(media.id.toString()) }
+    }
+
+    /**
+     * Runs ML segmentation and, on success, opens the interactive sticker editor by storing
+     * the source bitmap + raw mask in state. The caller provides [onFailed] for error toasts.
+     */
+    fun liftSubject(media: Media, onFailed: () -> Unit) {
         if (_state.value.isLiftingSubject) return
-        
         viewModelScope.launch {
             _state.value = _state.value.copy(isLiftingSubject = true)
             try {
-                val originalBitmap = BitmapUtils.loadCorrectlyOrientedBitmap(context,
-                    media.uri.toUri())
-                if (originalBitmap != null) {
-                    val mask = segmentationHelper.segmentImage(originalBitmap)
-                    
-                    // Validate if mask is substantial enough (not just noise)
-                    val isValidSubject = mask?.let { m ->
-                        var foregroundCount = 0
-                        val pixels = IntArray(m.width * m.height)
-                        m.getPixels(pixels, 0, m.width, 0, 0, m.width, m.height)
-                        for (p in pixels) {
-                            if ((p ushr 24) > 128) foregroundCount++
-                        }
-                        // At least 1% of the image should be foreground
-                        foregroundCount > (m.width * m.height * 0.01)
-                    } ?: false
+                val original = BitmapUtils.loadCorrectlyOrientedBitmap(context, media.uri.toUri())
+                if (original == null) { onFailed(); return@launch }
 
-                    if (mask != null && isValidSubject) {
-                        _state.value = _state.value.copy(liftMask = mask)
-                        val isolated = BitmapUtils.isolateSubject(originalBitmap, mask)
-                        onResult(isolated)
-                    } else {
-                        onResult(null)
-                    }
-                    originalBitmap.recycle()
+                val mask = segmentationHelper.segmentImage(original)
+
+                val isValid = mask?.let { m ->
+                    val pixels = IntArray(m.width * m.height)
+                    m.getPixels(pixels, 0, m.width, 0, 0, m.width, m.height)
+                    pixels.count { (it ushr 24) > 128 } > (m.width * m.height * 0.01)
+                } ?: false
+
+                if (mask != null && isValid) {
+                    _state.value = _state.value.copy(
+                        isLiftingSubject = false,
+                        liftMask = mask,
+                        stickerSourceBitmap = original,
+                        stickerMaskBitmap = mask
+                    )
                 } else {
-                    onResult(null)
+                    original.recycle()
+                    mask?.recycle()
+                    _state.value = _state.value.copy(isLiftingSubject = false)
+                    onFailed()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                onResult(null)
-            } finally {
-                _state.value = _state.value.copy(isLiftingSubject = false, liftMask = null)
+                _state.value = _state.value.copy(isLiftingSubject = false)
+                onFailed()
             }
         }
+    }
+
+    /** Called when the user confirms in the sticker editor. Runs isolateSubject on the refined mask. */
+    fun confirmSticker(refinedMask: Bitmap, onResult: (Bitmap?) -> Unit) {
+        val src = _state.value.stickerSourceBitmap ?: return
+        viewModelScope.launch {
+            val isolated = BitmapUtils.isolateSubject(src, refinedMask)
+            onResult(isolated)
+        }
+    }
+
+    /** Dismisses the sticker editor overlay and frees bitmaps. */
+    fun dismissSticker() {
+        val s = _state.value
+        s.stickerSourceBitmap?.recycle()
+        s.stickerMaskBitmap?.recycle()
+        _state.value = _state.value.copy(
+            liftMask = null,
+            stickerSourceBitmap = null,
+            stickerMaskBitmap = null
+        )
     }
 
     override fun onCleared() {
         super.onCleared()
         segmentationHelper.close()
+        dismissSticker()
     }
 }

@@ -76,4 +76,7 @@ class SettingsViewModel @Inject constructor(
     fun setVerticalSwipe(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setVerticalSwipe(enabled) }
     }
+    fun setStickersEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setStickersEnabled(enabled) }
+    }
 }

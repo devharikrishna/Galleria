@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.RoundedCorner
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.SwipeVertical
+import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -505,8 +506,16 @@ fun SettingsScreen(
                         subtitle = "Swipe up/down instead of left/right for Media files",
                         icon = Icons.Outlined.SwipeVertical,
                         checked = settings.verticalSwipe,
-                        position = SettingsItemPosition.LAST,
+                        position = SettingsItemPosition.MIDDLE,
                         onCheckedChange = { viewModel.setVerticalSwipe(it) }
+                    )
+                    SettingsSwitch(
+                        title = "Stickers (Long Press)",
+                        subtitle = "Long-press an image in the viewer to lift its subject",
+                        icon = Icons.Outlined.EmojiEmotions,
+                        checked = settings.stickersEnabled,
+                        position = SettingsItemPosition.LAST,
+                        onCheckedChange = { viewModel.setStickersEnabled(it) }
                     )
                 }
             }

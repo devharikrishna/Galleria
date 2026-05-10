@@ -1244,76 +1244,147 @@ object BitmapUtils {
     suspend fun isolateSubject(original: Bitmap, mask: Bitmap): Bitmap? = withContext(Dispatchers.Default) {
         val width = original.width
         val height = original.height
-        
-        // 1. Scale mask to match original if needed
+
+        // 1. Scale mask to match original size (bilinear for smoother edges)
         val scaledMask = if (mask.width != width || mask.height != height) {
             mask.scale(width, height)
         } else {
             mask
         }
 
+        // 2. Build a float alpha array from the ALPHA_8 mask
+        //    DeepLab category mask: 0 = background, >0 = foreground class
+        //    After normalisation in SegmentationHelper the mask is binary (0 or 255 in alpha).
+        //    We extract the alpha channel into a FloatArray for processing.
+        val alphaRaw = FloatArray(width * height)
+        val maskRow = IntArray(width)
+        for (y in 0 until height) {
+            scaledMask.getPixels(maskRow, 0, width, 0, y, width, 1)
+            val base = y * width
+            for (x in 0 until width) {
+                alphaRaw[base + x] = ((maskRow[x] ushr 24) and 0xFF) / 255f
+            }
+        }
+        if (scaledMask != mask) scaledMask.recycle()
+
+        // 3. Morphological erosion (radius 2) — shrinks the mask inward to remove
+        //    background-bleed pixels that DeepLab typically over-selects at edges.
+        val erosionRadius = 2
+        val eroded = FloatArray(width * height) { 1f }
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val idx = y * width + x
+                if (alphaRaw[idx] == 0f) {
+                    // Propagate zero into foreground neighbours within erosionRadius
+                    for (ky in -erosionRadius..erosionRadius) {
+                        val ny = y + ky
+                        if (ny < 0 || ny >= height) continue
+                        for (kx in -erosionRadius..erosionRadius) {
+                            val nx = x + kx
+                            if (nx < 0 || nx >= width) continue
+                            eroded[ny * width + nx] = 0f
+                        }
+                    }
+                }
+            }
+        }
+        // Where we marked 0 from a background source, keep original foreground elsewhere
+        for (i in eroded.indices) {
+            if (eroded[i] == 1f) eroded[i] = alphaRaw[i]
+        }
+
+        // 4. Gaussian-style feathering via two-pass box blur on the alpha array.
+        //    This turns the hard binary edge into a smooth gradient transition (anti-aliasing).
+        val featherRadius = 3
+        val tempAlpha = FloatArray(width * height)
+
+        // Horizontal pass
+        for (y in 0 until height) {
+            val base = y * width
+            var sum = 0f
+            val span = featherRadius * 2 + 1
+            // Prime the window
+            for (kx in -featherRadius..featherRadius) {
+                sum += eroded[base + kx.coerceIn(0, width - 1)]
+            }
+            for (x in 0 until width) {
+                tempAlpha[base + x] = sum / span
+                val remove = (x - featherRadius).coerceIn(0, width - 1)
+                val add = (x + featherRadius + 1).coerceIn(0, width - 1)
+                sum -= eroded[base + remove]
+                sum += eroded[base + add]
+            }
+        }
+        // Vertical pass
+        val feathered = FloatArray(width * height)
+        for (x in 0 until width) {
+            var sum = 0f
+            val span = featherRadius * 2 + 1
+            for (ky in -featherRadius..featherRadius) {
+                sum += tempAlpha[ky.coerceIn(0, height - 1) * width + x]
+            }
+            for (y in 0 until height) {
+                feathered[y * width + x] = sum / span
+                val remove = (y - featherRadius).coerceIn(0, height - 1)
+                val add = (y + featherRadius + 1).coerceIn(0, height - 1)
+                sum -= tempAlpha[remove * width + x]
+                sum += tempAlpha[add * width + x]
+            }
+        }
+
+        // 5. Apply a contrast curve to the feathered alpha:
+        //    - Values below a low threshold become 0 (hard cut background).
+        //    - Values above a high threshold become 1 (fully opaque interior).
+        //    - The narrow band in between is a smooth cosine ramp for silky edge AA.
+        val lowCut = 0.15f
+        val highCut = 0.75f
         val output = createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        
-        // 2. Extract foreground with transparency
-        val rowPixels = IntArray(width)
-        val rowMaskPixels = IntArray(width)
-        
-        var minX = width
-        var minY = height
-        var maxX = 0
-        var maxY = 0
+        val origRow = IntArray(width)
+        val outRow = IntArray(width)
+        var minX = width; var minY = height; var maxX = 0; var maxY = 0
         var hasForeground = false
 
         for (y in 0 until height) {
-            original.getPixels(rowPixels, 0, width, 0, y, width, 1)
-            scaledMask.getPixels(rowMaskPixels, 0, width, 0, y, width, 1)
-            
+            original.getPixels(origRow, 0, width, 0, y, width, 1)
+            val base = y * width
             for (x in 0 until width) {
-                val rawAlpha = (rowMaskPixels[x] ushr 24) and 0xFF
-                
-                // Refined alpha logic: Thresholding and smoothing
-                // 1. Semi-binary thresholding to remove low-confidence noise
-                // 2. Linear stretch between 128 and 200 for a cleaner edge
+                val raw = feathered[base + x]
                 val alpha = when {
-                    rawAlpha < 128 -> 0
-                    rawAlpha > 200 -> 255
-                    else -> ((rawAlpha - 128) * 255 / (200 - 128)).coerceIn(0, 255)
+                    raw <= lowCut  -> 0f
+                    raw >= highCut -> 1f
+                    else -> {
+                        // Smooth-step (cosine) ramp in the transition zone
+                        val t = (raw - lowCut) / (highCut - lowCut)
+                        0.5f - 0.5f * kotlin.math.cos(t * Math.PI.toFloat())
+                    }
                 }
-
-                if (alpha > 0) {
-                    val origPixel = rowPixels[x]
-                    rowPixels[x] = (alpha shl 24) or (origPixel and 0x00FFFFFF)
-                    
-                    // Track bounds for cropping
+                val a255 = (alpha * 255f + 0.5f).toInt().coerceIn(0, 255)
+                if (a255 > 0) {
+                    val orig = origRow[x]
+                    outRow[x] = (a255 shl 24) or (orig and 0x00FFFFFF)
                     if (x < minX) minX = x
                     if (x > maxX) maxX = x
                     if (y < minY) minY = y
                     if (y > maxY) maxY = y
                     hasForeground = true
                 } else {
-                    rowPixels[x] = Color.TRANSPARENT
+                    outRow[x] = Color.TRANSPARENT
                 }
             }
-            output.setPixels(rowPixels, 0, width, 0, y, width, 1)
+            output.setPixels(outRow, 0, width, 0, y, width, 1)
         }
 
-        if (scaledMask != mask) scaledMask.recycle()
-        
         if (!hasForeground) {
             output.recycle()
             return@withContext null
         }
 
-        // 3. Crop to bounds for a better "sticker" look
+        // 6. Crop to tight bounds for a clean sticker look
         val cropW = (maxX - minX + 1).coerceAtLeast(1)
         val cropH = (maxY - minY + 1).coerceAtLeast(1)
-        
-        val croppedOutput = Bitmap.createBitmap(output, minX, minY, cropW, cropH)
-        if (croppedOutput != output) {
-            output.recycle()
-        }
-        
-        return@withContext croppedOutput
+        val cropped = Bitmap.createBitmap(output, minX, minY, cropW, cropH)
+        if (cropped != output) output.recycle()
+        return@withContext cropped
     }
 
     fun ratioToRectRatio(aspectRatio: Float, imageRatio: Float): Float {

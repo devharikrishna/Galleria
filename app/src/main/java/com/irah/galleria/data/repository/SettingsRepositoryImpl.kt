@@ -41,6 +41,7 @@ class SettingsRepositoryImpl @Inject constructor(
         val TRASH_ENABLED = booleanPreferencesKey("trash_enabled")
         val BLOB_ANIMATION = stringPreferencesKey("blob_animation")
         val VERTICAL_SWIPE = booleanPreferencesKey("vertical_swipe")
+        val STICKERS_ENABLED = booleanPreferencesKey("stickers_enabled")
     }
     override val settings: Flow<AppSettings> = dataStore.data.map { preferences ->
         AppSettings(
@@ -71,7 +72,8 @@ class SettingsRepositoryImpl @Inject constructor(
             blobAnimation = try {
                 com.irah.galleria.domain.model.BackgroundAnimationType.valueOf(preferences[Keys.BLOB_ANIMATION] ?: com.irah.galleria.domain.model.BackgroundAnimationType.WAVE.name)
             } catch (_: Exception) { com.irah.galleria.domain.model.BackgroundAnimationType.WAVE },
-            verticalSwipe = preferences[Keys.VERTICAL_SWIPE] ?: true
+            verticalSwipe = preferences[Keys.VERTICAL_SWIPE] ?: true,
+            stickersEnabled = preferences[Keys.STICKERS_ENABLED] ?: true
         )
     }
     override suspend fun setThemeMode(mode: ThemeMode) {
@@ -130,5 +132,8 @@ class SettingsRepositoryImpl @Inject constructor(
     }
     override suspend fun setVerticalSwipe(enabled: Boolean) {
         dataStore.edit { it[Keys.VERTICAL_SWIPE] = enabled }
+    }
+    override suspend fun setStickersEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.STICKERS_ENABLED] = enabled }
     }
 }

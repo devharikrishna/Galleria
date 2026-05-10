@@ -94,12 +94,16 @@ fun GalleryGridContent(
             selectedIds = selectedIds.items,
             onSelectionChange = onSelectionChange,
             getItemIndexAtPosition = { offset ->
+                val memoriesOffset = if (memories.isNotEmpty() && !isSelectionMode) 1 else 0
                 gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
                     val itemOffset = item.offset
                     val itemSize = item.size
                     offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
                     offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
-                }?.index
+                }?.let { item ->
+                    val mediaIndex = item.index - memoriesOffset
+                    if (mediaIndex >= 0 && mediaIndex < mediaIds.size) mediaIndex else null
+                }
             },
             scrollBy = { gridState.scrollBy(it) },
             viewportHeight = { gridState.layoutInfo.viewportSize.height }
@@ -197,12 +201,16 @@ fun GalleryGridContent(
             selectedIds = selectedIds.items,
             onSelectionChange = onSelectionChange,
             getItemIndexAtPosition = { offset ->
+                val memoriesOffset = if (memories.isNotEmpty() && !isSelectionMode) 1 else 0
                 staggeredGridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
                     val itemOffset = item.offset
                     val itemSize = item.size
                     offset.x >= itemOffset.x - 50 && offset.x <= itemOffset.x + itemSize.width + 50 &&
                     offset.y >= itemOffset.y - 50 && offset.y <= itemOffset.y + itemSize.height + 50
-                }?.index
+                }?.let { item ->
+                    val mediaIndex = item.index - memoriesOffset
+                    if (mediaIndex >= 0 && mediaIndex < mediaIds.size) mediaIndex else null
+                }
             },
             scrollBy = { staggeredGridState.scrollBy(it) },
             viewportHeight = { staggeredGridState.layoutInfo.viewportSize.height }

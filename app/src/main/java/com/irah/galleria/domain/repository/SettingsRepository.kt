@@ -24,4 +24,5 @@ interface SettingsRepository {
     suspend fun setTrashEnabled(enabled: Boolean)
     suspend fun setBlobAnimation(type: com.irah.galleria.domain.model.BackgroundAnimationType)
     suspend fun setVerticalSwipe(enabled: Boolean)
+    suspend fun setStickersEnabled(enabled: Boolean)
 }

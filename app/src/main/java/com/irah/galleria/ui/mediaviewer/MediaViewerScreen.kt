@@ -221,15 +221,10 @@ fun MediaViewerScreen(
                                 }
                             },
                             onLongPress = {
-                                if (!media.isVideo) {
+                                if (!media.isVideo && settings.stickersEnabled) {
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    viewModel.liftSubject(media) { bitmap ->
-                                        if (bitmap != null) {
-                                            ClipboardUtils.copyImageToClipboard(context, bitmap)
-                                            Toast.makeText(context, "Sticker copied to clipboard", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            Toast.makeText(context, "Could not isolate subject", Toast.LENGTH_SHORT).show()
-                                        }
+                                    viewModel.liftSubject(media) {
+                                        Toast.makeText(context, "Could not isolate subject", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -258,15 +253,10 @@ fun MediaViewerScreen(
                                 }
                             },
                             onLongPress = {
-                                if (!media.isVideo) {
+                                if (!media.isVideo && settings.stickersEnabled) {
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    viewModel.liftSubject(media) { bitmap ->
-                                        if (bitmap != null) {
-                                            ClipboardUtils.copyImageToClipboard(context, bitmap)
-                                            Toast.makeText(context, "Sticker copied to clipboard", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            Toast.makeText(context, "Could not isolate subject", Toast.LENGTH_SHORT).show()
-                                        }
+                                    viewModel.liftSubject(media) {
+                                        Toast.makeText(context, "Could not isolate subject", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -437,6 +427,53 @@ fun MediaViewerScreen(
             ) {
                 MediaInfoContent(media = currentMedia)
             }
+        }
+
+        // ── Sticker lift in-progress overlay ──────────────────────────────────
+        if (state.isLiftingSubject) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    LinearProgressIndicator(
+                        color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                        modifier = androidx.compose.ui.Modifier.padding(horizontal = 48.dp)
+                    )
+                    Text(
+                        "Detecting subject…",
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+
+        // ── Interactive sticker refinement overlay ────────────────────────────
+        val srcBitmap = state.stickerSourceBitmap
+        val maskBitmap = state.stickerMaskBitmap
+        if (srcBitmap != null && maskBitmap != null) {
+            StickerRefineOverlay(
+                originalBitmap = srcBitmap,
+                initialMask = maskBitmap,
+                onConfirm = { refinedMask ->
+                    viewModel.confirmSticker(refinedMask) { isolated ->
+                        if (isolated != null) {
+                            ClipboardUtils.copyImageToClipboard(context, isolated)
+                            Toast.makeText(context, "Sticker copied to clipboard", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Could not create sticker", Toast.LENGTH_SHORT).show()
+                        }
+                        viewModel.dismissSticker()
+                    }
+                },
+                onDismiss = { viewModel.dismissSticker() }
+            )
         }
     } else {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
