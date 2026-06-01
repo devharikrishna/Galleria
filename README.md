@@ -1,4 +1,4 @@
-# Galleria - AI Gallery App🖼
+# Galleria 🖼
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0-purple?style=flat&logo=kotlin)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-green?style=flat&logo=android)
@@ -45,6 +45,14 @@
 *   **Blur**: Blur background of portraits.
 *   **S-Curve**: Powerful S-Curve to edit more deeply.
 
+### 🧠 On-Device AI Features
+*   **Interactive Sticker Generation**: Cut out objects or subjects on-device using **MediaPipe DeepLab v3** segmentation, refined with a fast O(n) **Guided Filter (He et al. 2013)** to preserve delicate details like hair and fingers.
+*   **Selection Refinement Suite**: Fine-tune generated stickers using a **Magic Wand** (color-connected flood fill with adjustable tolerance), manual **Add/Erase brushes**, and morphological operations (**Grow**, **Shrink**, **Smooth**). Includes a beautiful glowing "marching ants" border and sweep laser scan animations.
+*   **Semantic Search**: Query your gallery using natural language (e.g., "sunset at the beach", "dog playing with ball") powered by an on-device TFLite **CLIP** text and image encoding model.
+*   **Face Recognition & Clustering**: Detects faces with **Google ML Kit**, extracts 192-dimensional embeddings via **MobileFaceNet**, and clusters them using the **DBSCAN algorithm** with a strict constraint of one face per person per photo.
+*   **Automatic Image Labeling**: Automatically categorizes and tags media on-device using **Google ML Kit Image Labeler** with a confidence threshold > 0.70.
+*   **Background Analysis Pipeline**: Automatically schedules incremental media indexing via a WorkManager **CoroutineWorker** that analyzes untagged images in the background when the device is idle.
+
 ### ⚙️ Tools
 *   **PDF Export**: Select multiple images and export them as a single PDF document.
 
@@ -76,6 +84,7 @@
 *   **Image Loading**: Coil (with VideoFrameDecoder)
 *   **Video**: Media3 ExoPlayer
 *   **Navigation**: Jetpack Navigation Compose
+*   **On-Device Machine Learning**: Google ML Kit (Face Detection & Image Labeling), MediaPipe Tasks Vision (DeepLab v3 Image Segmentation), TensorFlow Lite (CLIP Semantic Search, MobileFaceNet)
 
 ---
 
