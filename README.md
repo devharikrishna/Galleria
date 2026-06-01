@@ -1,4 +1,4 @@
-# Galleria 🖼
+# Galleria - AI Gallery App🖼
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0-purple?style=flat&logo=kotlin)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-green?style=flat&logo=android)
